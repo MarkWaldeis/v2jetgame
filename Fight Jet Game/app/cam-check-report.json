@@ -1,0 +1,178 @@
+[
+  {
+    "id": "f16",
+    "ok": true,
+    "level": {
+      "jet": "f16",
+      "align": 0.998,
+      "jetInFront": 0.845,
+      "above": 4.8,
+      "camUpY": 1,
+      "jetNdcY": -0.94
+    },
+    "pitched": {
+      "align": 0.998,
+      "camY": 907.6,
+      "jetY": 900,
+      "fwdY": -0.435,
+      "above": 7.62
+    },
+    "rolled": {
+      "camUpY": 0.992
+    }
+  },
+  {
+    "id": "f35",
+    "ok": true,
+    "level": {
+      "jet": "f35",
+      "align": 0.998,
+      "jetInFront": 0.844,
+      "above": 4.8,
+      "camUpY": 1,
+      "jetNdcY": -0.787
+    },
+    "pitched": {
+      "align": 0.998,
+      "camY": 907.6,
+      "jetY": 900,
+      "fwdY": -0.435,
+      "above": 7.62
+    },
+    "rolled": {
+      "camUpY": 0.992
+    }
+  },
+  {
+    "id": "f14",
+    "ok": true,
+    "level": {
+      "jet": "f14",
+      "align": 0.998,
+      "jetInFront": 0.845,
+      "above": 4.8,
+      "camUpY": 1,
+      "jetNdcY": -0.857
+    },
+    "pitched": {
+      "align": 0.998,
+      "camY": 907.6,
+      "jetY": 900,
+      "fwdY": -0.435,
+      "above": 7.62
+    },
+    "rolled": {
+      "camUpY": 0.992
+    }
+  },
+  {
+    "id": "l39",
+    "ok": true,
+    "level": {
+      "jet": "l39",
+      "align": 0.998,
+      "jetInFront": 0.845,
+      "above": 4.8,
+      "camUpY": 1,
+      "jetNdcY": -0.872
+    },
+    "pitched": {
+      "align": 0.998,
+      "camY": 907.6,
+      "jetY": 900,
+      "fwdY": -0.435,
+      "above": 7.62
+    },
+    "rolled": {
+      "camUpY": 0.992
+    }
+  },
+  {
+    "id": "elite",
+    "ok": true,
+    "level": {
+      "jet": "elite",
+      "align": 0.998,
+      "jetInFront": 0.845,
+      "above": 4.8,
+      "camUpY": 1,
+      "jetNdcY": -0.89
+    },
+    "pitched": {
+      "align": 0.998,
+      "camY": 907.6,
+      "jetY": 900,
+      "fwdY": -0.435,
+      "above": 7.62
+    },
+    "rolled": {
+      "camUpY": 0.992
+    }
+  },
+  {
+    "id": "su25",
+    "ok": true,
+    "level": {
+      "jet": "su25",
+      "align": 0.998,
+      "jetInFront": 0.844,
+      "above": 4.8,
+      "camUpY": 1,
+      "jetNdcY": -0.751
+    },
+    "pitched": {
+      "align": 0.998,
+      "camY": 907.6,
+      "jetY": 900,
+      "fwdY": -0.435,
+      "above": 7.62
+    },
+    "rolled": {
+      "camUpY": 0.992
+    }
+  },
+  {
+    "id": "su34",
+    "ok": true,
+    "level": {
+      "jet": "su34",
+      "align": 0.998,
+      "jetInFront": 0.844,
+      "above": 4.8,
+      "camUpY": 1,
+      "jetNdcY": -0.893
+    },
+    "pitched": {
+      "align": 0.998,
+      "camY": 907.6,
+      "jetY": 900,
+      "fwdY": -0.435,
+      "above": 7.62
+    },
+    "rolled": {
+      "camUpY": 0.992
+    }
+  },
+  {
+    "id": "su57",
+    "ok": true,
+    "level": {
+      "jet": "su57",
+      "align": 0.998,
+      "jetInFront": 0.845,
+      "above": 4.8,
+      "camUpY": 1,
+      "jetNdcY": -0.862
+    },
+    "pitched": {
+      "align": 0.998,
+      "camY": 907.6,
+      "jetY": 900,
+      "fwdY": -0.435,
+      "above": 7.62
+    },
+    "rolled": {
+      "camUpY": 0.992
+    }
+  }
+]

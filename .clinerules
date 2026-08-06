@@ -1,0 +1,13 @@
+# Git & Build Regeln für Cline / DeepSeek
+
+1. **Automatische Veröffentlichung:**
+   Immer wenn du Änderungen am Code vornimmst, führe den gesamten Workflow (Build -> Commit -> Push) direkt und selbstständig aus, ohne dass der Benutzer dich explizit auffordern muss.
+
+2. **Pflicht-Test vor dem Push:**
+   Führe vor jedem `git commit` und `git push` zwingend `npm run build` im Terminal aus, um sicherzustellen, dass keine Build-Fehler auf GitHub Pages entstehen.
+
+3. **Fehlerbehebung:**
+   Falls `npm run build` Fehler anzeigt, beziehe die Korrekturen ein und teste erneut mit `npm run build`. Pushe den Code ERST dann, wenn der Build zu 100% fehlerfrei durchläuft.
+
+4. **Keine Bilder (DeepSeek API Format):**
+   Schicke niemals Bild-Dateien oder `image_url`-Objekte an die API, da DeepSeek rein textbasiert arbeitet.

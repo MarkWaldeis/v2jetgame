@@ -1,0 +1,195 @@
+[
+  {
+    "id": "f16",
+    "ok": true,
+    "err": null,
+    "ms": 15261,
+    "info": {
+      "jetId": "f16",
+      "name": "F-16 Fighting Falcon",
+      "faction": "nato",
+      "hasGlb": true,
+      "kids": 4,
+      "muzzles": [
+        [
+          -0.55,
+          5.78,
+          -6.91
+        ]
+      ],
+      "speedMult": 1
+    }
+  },
+  {
+    "id": "f35",
+    "ok": true,
+    "err": null,
+    "ms": 9675,
+    "info": {
+      "jetId": "f35",
+      "name": "F-35 Lightning II",
+      "faction": "nato",
+      "hasGlb": true,
+      "kids": 4,
+      "muzzles": [
+        [
+          -0.53,
+          4.51,
+          -7.34
+        ]
+      ],
+      "speedMult": 1.02
+    }
+  },
+  {
+    "id": "f14",
+    "ok": true,
+    "err": null,
+    "ms": 23103,
+    "info": {
+      "jetId": "f14",
+      "name": "F-14B Tomcat",
+      "faction": "nato",
+      "hasGlb": true,
+      "kids": 4,
+      "muzzles": [
+        [
+          -1.09,
+          0.29,
+          -7.45
+        ],
+        [
+          1.09,
+          0.29,
+          -7.45
+        ]
+      ],
+      "speedMult": 1.18
+    }
+  },
+  {
+    "id": "l39",
+    "ok": true,
+    "err": null,
+    "ms": 12618,
+    "info": {
+      "jetId": "l39",
+      "name": "L-39ZA Albatros",
+      "faction": "nato",
+      "hasGlb": true,
+      "kids": 4,
+      "muzzles": [
+        [
+          -0.51,
+          0.59,
+          -6.66
+        ]
+      ],
+      "speedMult": 0.72
+    }
+  },
+  {
+    "id": "elite",
+    "ok": true,
+    "err": null,
+    "ms": 7661,
+    "info": {
+      "jetId": "elite",
+      "name": "Elite-Jäger",
+      "faction": "nato",
+      "hasGlb": true,
+      "kids": 4,
+      "muzzles": [
+        [
+          -0.86,
+          4.55,
+          -6.88
+        ],
+        [
+          0.86,
+          4.55,
+          -6.88
+        ]
+      ],
+      "speedMult": 1.2
+    }
+  },
+  {
+    "id": "su25",
+    "ok": true,
+    "err": null,
+    "ms": 9574,
+    "info": {
+      "jetId": "su25",
+      "name": "Su-25 Grach",
+      "faction": "russia",
+      "hasGlb": true,
+      "kids": 4,
+      "muzzles": [
+        [
+          -1.01,
+          0.42,
+          -6.82
+        ],
+        [
+          1.01,
+          0.42,
+          -6.82
+        ]
+      ],
+      "speedMult": 0.68
+    }
+  },
+  {
+    "id": "su34",
+    "ok": true,
+    "err": null,
+    "ms": 12430,
+    "info": {
+      "jetId": "su34",
+      "name": "Su-34 Fullback",
+      "faction": "russia",
+      "hasGlb": true,
+      "kids": 4,
+      "muzzles": [
+        [
+          -0.67,
+          0.24,
+          -7.74
+        ],
+        [
+          0.67,
+          0.24,
+          -7.74
+        ]
+      ],
+      "speedMult": 0.98
+    }
+  },
+  {
+    "id": "su57",
+    "ok": true,
+    "err": null,
+    "ms": 7718,
+    "info": {
+      "jetId": "su57",
+      "name": "Su-57 Felon",
+      "faction": "russia",
+      "hasGlb": true,
+      "kids": 4,
+      "muzzles": [
+        [
+          -0.73,
+          0.09,
+          -8.06
+        ],
+        [
+          0.73,
+          0.09,
+          -8.06
+        ]
+      ],
+      "speedMult": 1.16
+    }
+  }
+]
