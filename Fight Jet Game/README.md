@@ -4,7 +4,7 @@ Browserbasiertes 3D-Kampfjet-Spiel: F-16 „Viper" im USAF-Look fliegen, 3-Welle
 mit KI-Bandits und SEAD gegen SAM-Stellungen, Bordkanone + AIM-9 mit Lock-On,
 Nachbrenner, Cockpit-Interior und Avionik-HUD.
 
-**Live spielen:** https://markwaldeis.github.io/fight-jet-3d/
+**Live spielen:** [https://markwaldeis.github.io/v2jetgame/](https://markwaldeis.github.io/v2jetgame/)
 
 ## Stormbreak Archipelago
 
