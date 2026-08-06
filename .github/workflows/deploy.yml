@@ -12,15 +12,17 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
@@ -32,16 +34,16 @@ jobs:
         env:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
-      - name: Build
+      - name: Build static site
         working-directory: Fight Jet Game/app
         run: npm run build
 
-      - name: Upload Pages artifact
+      - name: Upload artifact for GitHub Actions Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: Fight Jet Game/app/dist
 
-      - name: Deploy to gh-pages branch
+      - name: Deploy to gh-pages branch (for Branch deployment mode)
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -49,11 +51,12 @@ jobs:
           force_orphan: true
 
   deploy:
-    needs: build-and-deploy
-    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
     steps:
-      - id: deployment
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
