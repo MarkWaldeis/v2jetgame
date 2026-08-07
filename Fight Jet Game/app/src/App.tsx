@@ -4,8 +4,15 @@ import { Hud } from './components/Hud';
 import { Menus } from './components/Menus';
 import type { JetId } from './game/aircraft/JetCatalog';
 import type { MapId } from './game/world/MapCatalog';
-import { loadSettings, saveSettings, purchaseJet, isJetOwned } from './lib/gameSettings';
+import {
+  loadSettings,
+  saveSettings,
+  purchaseJet,
+  isJetOwned,
+  completeCampaignLevel,
+} from './lib/gameSettings';
 import { disposePreviewRenderers } from './lib/previewGpu';
+import { getCampaignLevel } from './game/campaign/CampaignCatalog';
 
 const initialHud: HudData = {
   state: 'menu',
@@ -95,11 +102,25 @@ export default function App() {
 
       // Mission beendet
       if ((d.state === 'gameover' || d.state === 'victory') && phaseRef.current === 'playing') {
-        const reward = d.state === 'victory' ? 1000 : Math.floor(d.score * 0.5);
-        const s = loadSettings();
-        s.aeroCredits += reward;
-        saveSettings(s);
-        setCredits(s.aeroCredits);
+        if (d.state === 'victory') {
+          const levelId = gameRef.current?.getCampaignLevelId?.() ?? null;
+          if (levelId) {
+            const level = getCampaignLevel(levelId);
+            const total = completeCampaignLevel(level.id, level.index, level.rewardCredits);
+            setCredits(total);
+          } else {
+            const s = loadSettings();
+            s.aeroCredits += 1000;
+            saveSettings(s);
+            setCredits(s.aeroCredits);
+          }
+        } else {
+          const reward = Math.floor(d.score * 0.5);
+          const s = loadSettings();
+          s.aeroCredits += reward;
+          saveSettings(s);
+          setCredits(s.aeroCredits);
+        }
         updatePhase('menu');
         return;
       }
@@ -194,6 +215,23 @@ export default function App() {
     if (ok) setCredits(loadSettings().aeroCredits);
     return ok;
   }, []);
+
+  /** Kampagnen-Mission: Level setzen, Map laden, Mission starten */
+  const onStartCampaign = useCallback(
+    async (levelId: string, jetId: JetId) => {
+      if (!gameRef.current) return;
+      const level = getCampaignLevel(levelId);
+      gameRef.current.setCampaignLevel(level.id);
+      mapIdRef.current = level.mapId as MapId;
+      try {
+        await gameRef.current.selectMap(level.mapId);
+      } catch (e) {
+        console.warn('Kampagnen-Map laden fehlgeschlagen, starte trotzdem:', e);
+      }
+      await onStart(jetId);
+    },
+    [onStart]
+  );
 
   const isMenu = phase === 'menu';
   const isLoading = phase === 'loading';
@@ -369,6 +407,7 @@ export default function App() {
           onSoundChange={onSoundChange}
           aeroCredits={credits}
           onPurchaseJet={onPurchaseJet}
+          onStartCampaign={onStartCampaign}
         />
         </div>
       )}

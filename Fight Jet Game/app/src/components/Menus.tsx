@@ -20,6 +20,11 @@ import { JetSilhouette, NavIcon } from './JetIcons';
 import { JetPreview3D } from './JetPreview3D';
 import { JetThumb } from './JetThumb';
 import { warmJetThumbnails } from '../lib/jetThumbnails';
+import { CAMPAIGN_LEVELS } from '../game/campaign/CampaignCatalog';
+import {
+  isCampaignLevelUnlocked,
+  isCampaignLevelCompleted,
+} from '../lib/gameSettings';
 
 type Screen = 'main' | 'hangar' | 'maps' | 'missions' | 'settings';
 type SettingsTab = 'graphics' | 'sound' | 'controls';
@@ -68,6 +73,7 @@ export function Menus({
   onSoundChange,
   aeroCredits,
   onPurchaseJet,
+  onStartCampaign,
 }: {
   state: GameState;
   score: number;
@@ -81,6 +87,7 @@ export function Menus({
   onSoundChange?: (s: { muted: boolean; volume: number }) => void;
   aeroCredits: number;
   onPurchaseJet: (jetId: string, price: number) => boolean;
+  onStartCampaign?: (levelId: string, jetId: JetId) => void;
 }) {
   const [screen, setScreen] = useState<Screen>('main');
   const [faction, setFaction] = useState<JetFaction>('nato');
@@ -1054,73 +1061,79 @@ export function Menus({
                 Wähle deine Mission. Weitere Einsätze werden in zukünftigen Updates freigeschaltet.
               </p>
 
-              <div className="mb-6 grid gap-4 sm:grid-cols-2">
-                <div className="mission-card is-playable" onClick={startMission}>
-                  <div className="mission-card-nr">01</div>
-                  <div className="mission-card-name">OPERATION DESERT STORM</div>
-                  <p className="mission-card-desc">
-                    Eliminiere feindliche Bodentruppen in der Wüstenregion. Weiche SAM-Raketen aus und
-                    zerstöre das gegnerische Hauptquartier.
-                  </p>
-                  <div className="mission-difficulty">
-                    Schwierigkeit: <span className="mission-star">★★</span>
-                    <span className="mission-star-empty">☆☆☆</span>
-                  </div>
-                  <span className="mission-card-badge ready">🔓 Bereit</span>
-                </div>
-
-                <div className="mission-card is-locked">
-                  <div className="mission-card-nr">02</div>
-                  <div className="mission-card-name">CANYON RUN</div>
-                  <p className="mission-card-desc">
-                    Navigiere durch enge Canyons und weiche Radarfallen aus. Tiefflug-Mission bei Nacht.
-                  </p>
-                  <div className="mission-difficulty">
-                    Schwierigkeit:{' '}
-                    <span className="mission-star" style={{ opacity: 0.5 }}>
-                      ★★★
-                    </span>
-                    <span className="mission-star-empty">☆☆</span>
-                  </div>
-                  <span className="mission-card-badge locked-badge">🔒 Demnächst</span>
-                </div>
-
-                <div className="mission-card is-locked">
-                  <div className="mission-card-nr">03</div>
-                  <div className="mission-card-name">NIGHT RAID</div>
-                  <p className="mission-card-desc">
-                    Infiltriere den Luftraum bei Nacht. Zerstöre feindliche Bomber bevor sie deine Basis
-                    erreichen.
-                  </p>
-                  <div className="mission-difficulty">
-                    Schwierigkeit:{' '}
-                    <span className="mission-star" style={{ opacity: 0.5 }}>
-                      ★★★★
-                    </span>
-                    <span className="mission-star-empty">☆</span>
-                  </div>
-                  <span className="mission-card-badge locked-badge">🔒 Demnächst</span>
-                </div>
-
-                <div className="mission-card is-locked">
-                  <div className="mission-card-nr">04</div>
-                  <div className="mission-card-name">FINAL ASSAULT</div>
-                  <p className="mission-card-desc">
-                    Die finale Schlacht. Stelle dich der gesamten gegnerischen Luftflotte und verteidige
-                    dein Heimatland.
-                  </p>
-                  <div className="mission-difficulty">
-                    Schwierigkeit:{' '}
-                    <span className="mission-star" style={{ opacity: 0.5 }}>
-                      ★★★★★
-                    </span>
-                  </div>
-                  <span className="mission-card-badge locked-badge">🔒 Demnächst</span>
-                </div>
+              <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {CAMPAIGN_LEVELS.map((level) => {
+                  const unlocked = isCampaignLevelUnlocked(level.index);
+                  const done = isCampaignLevelCompleted(level.id);
+                  const mapName = getMapDef(level.mapId)?.name ?? level.mapId;
+                  const stars = '★'.repeat(level.difficulty);
+                  const empty = '☆'.repeat(5 - level.difficulty);
+                  const waves = level.waves.length;
+                  const ground =
+                    level.waves.reduce((n, w) => n + (w.aaa ?? 0) + (w.sams ?? 0), 0) > 0;
+                  return (
+                    <div
+                      key={level.id}
+                      className={`mission-card ${unlocked ? 'is-playable' : 'is-locked'}`}
+                      onClick={() => {
+                        if (!unlocked) return;
+                        if (onStartCampaign) {
+                          onStartCampaign(level.id, selectedJetId);
+                        } else {
+                          startMission();
+                        }
+                      }}
+                      role="button"
+                      tabIndex={unlocked ? 0 : -1}
+                    >
+                      <div className="mission-card-nr">{String(level.index).padStart(2, '0')}</div>
+                      <div className="mission-card-name">{level.codename}</div>
+                      <p className="mission-card-desc">{level.description}</p>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        <span className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-200/70">
+                          {mapName}
+                        </span>
+                        <span className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/45">
+                          {waves} Wellen
+                        </span>
+                        {ground && (
+                          <span className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/45">
+                            Boden
+                          </span>
+                        )}
+                        {level.tags.slice(0, 2).map((t) => (
+                          <span
+                            key={t}
+                            className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/40"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="mission-difficulty">
+                        Schwierigkeit:{' '}
+                        <span className="mission-star">{stars}</span>
+                        <span className="mission-star-empty">{empty}</span>
+                      </div>
+                      <div className="mt-1 text-[10px] text-amber-200/50">
+                        +{level.rewardCredits.toLocaleString()} AC
+                      </div>
+                      {unlocked ? (
+                        <span className={`mission-card-badge ready`}>{done ? '✓ Erneut fliegen' : '🔓 Bereit'}</span>
+                      ) : (
+                        <span className="mission-card-badge locked-badge">🔒 Level {level.index - 1} abschließen</span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
-              <button type="button" className="glass-button glass-button-primary w-full py-3.5" onClick={startMission}>
-                Mission starten · {selected.callsign}
+              <button
+                type="button"
+                className="glass-button glass-button-ghost w-full py-3"
+                onClick={startMission}
+              >
+                Quick Play (Level 1 Map) · {selected.callsign}
               </button>
             </div>
           </div>

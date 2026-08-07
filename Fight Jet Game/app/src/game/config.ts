@@ -224,43 +224,32 @@ export const CONFIG = {
     kill: 500,
     hitBonus: 25,
     samKill: 300,
+    aaaKill: 180,
   },
   mission: {
+    /**
+     * Fallback-Wellen (wenn keine Kampagne aktiv).
+     * Primär steuert CampaignCatalog die Missionen.
+     */
     waves: [
       {
-        bandits: 3,
+        bandits: 2,
         sams: 0,
         speedScale: 0.4,
         enemyMissiles: false,
-        label: 'WELLE 1 · TRAINING — Langsame Banditen',
-      },
-      {
-        bandits: 3,
-        sams: 0,
-        speedScale: 1,
-        enemyMissiles: true,
-        label: 'WELLE 2 — Luftüberlegenheit',
-      },
-      {
-        bandits: 5,
-        sams: 0,
-        speedScale: 1,
-        enemyMissiles: true,
-        label: 'WELLE 3 — Banditen-Schwarm',
-      },
-      {
-        bandits: 4,
-        sams: 4,
-        speedScale: 1,
-        enemyMissiles: true,
-        label: 'WELLE 4 — SEAD: Zerstöre die SAM-Stellungen',
+        label: 'WELLE 1 · TRAINING',
       },
     ],
-    waveDelay: 3.5,
+    waveDelay: 3.2,
     samHp: 40,
     samRange: 3500,
     samFireInterval: 9,
     samMissileDamage: 35,
+    /** AAA-Flak-Fahrzeuge */
+    aaaHp: 28,
+    aaaDamage: 2.8,
+    aaaRange: 2400,
+    aaaFireInterval: 0.11,
   },
 } as const;
 

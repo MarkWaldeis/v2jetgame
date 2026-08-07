@@ -471,6 +471,21 @@ export function Hud({ data }: { data: HudData }) {
                             </g>
                           );
                         }
+                        if (r.kind === 'aaa') {
+                          return (
+                            <g key={`a-${i}`}>
+                              <rect
+                                x={cx - 2.5}
+                                y={cy - 2.5}
+                                width="5"
+                                height="5"
+                                fill={r.locked ? 'rgba(143,174,90,0.4)' : 'rgba(143,174,90,0.18)'}
+                                stroke="#8fae5a"
+                                strokeWidth={r.locked ? 1.5 : 1}
+                              />
+                            </g>
+                          );
+                        }
                         // bandit
                         return (
                           <g key={`b-${i}`} filter={r.locked ? 'url(#radarGlow)' : undefined}>
@@ -511,6 +526,7 @@ export function Hud({ data }: { data: HudData }) {
                   <div className="hud-radar-legend">
                     <span><i className="hud-leg-bandit" /> Bandit {bandits}</span>
                     <span><i className="hud-leg-sam" /> SAM</span>
+                    <span><i className="hud-leg-sam" style={{ opacity: 0.55 }} /> AAA</span>
                     <span><i className="hud-leg-mssl" /> MSSL</span>
                   </div>
                 </div>

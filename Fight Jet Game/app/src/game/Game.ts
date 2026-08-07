@@ -15,7 +15,13 @@ import {
   missileIdForJet,
 } from './combat/MissileVisuals';
 import { Effects } from './combat/Effects';
-import { SamSite, type Damageable } from './combat/GroundTarget';
+import { SamSite, AaaTruck, type Damageable } from './combat/GroundTarget';
+import {
+  CAMPAIGN_LEVELS,
+  getCampaignLevel,
+  type CampaignLevel,
+  type CampaignWave,
+} from './campaign/CampaignCatalog';
 import { SoundManager } from './audio/SoundManager';
 import { loadJetGlb } from './aircraft/GlbJetLoader';
 import { getJetDef, jetFxVectors, JET_CATALOG, legacyJetIds, type JetId } from './aircraft/JetCatalog';
@@ -70,12 +76,12 @@ export interface HudData {
   airbrake: boolean;
   /**
    * Radar-Kontakte (lokaler Jet-Raum, -1..1 relativ radarRange):
-   * bandit = Luftgegner, sam = Boden, missile = eingehende Lenkwaffe
+   * bandit = Luft, sam = SAM, aaa = Flak, missile = eingehende Lenkwaffe
    */
   radar: {
     x: number;
     y: number;
-    kind: 'bandit' | 'sam' | 'missile';
+    kind: 'bandit' | 'sam' | 'aaa' | 'missile';
     locked: boolean;
     /** true wenn Rakete den Spieler anvisiert */
     incoming?: boolean;
@@ -133,7 +139,10 @@ export class Game {
   private player = new PlayerJet();
   private enemies: EnemyJet[] = [];
   private sams: SamSite[] = [];
+  private aaaUnits: AaaTruck[] = [];
   private cam = new CameraController();
+  /** Aktives Kampagnen-Level (null = Quick Play Fallback) */
+  private campaignLevel: CampaignLevel | null = CAMPAIGN_LEVELS[0];
   private cannons: CannonSystem;
   private effects = new Effects();
   private sound = new SoundManager();
@@ -559,7 +568,8 @@ export class Game {
   /** Test/Debug: springt zur angegebenen Welle (0-basiert). */
   debugGotoWave(index: number) {
     this.clearActors();
-    this.waveIndex = Math.max(0, Math.min(index, CONFIG.mission.waves.length - 1));
+    const waves = this.getActiveWaves();
+    this.waveIndex = Math.max(0, Math.min(index, waves.length - 1));
     this.waveDelay = 0;
     this.spawnWave(this.waveIndex);
     this.state = 'playing';
@@ -570,21 +580,74 @@ export class Game {
     return this.waveIndex;
   }
 
+  getCampaignLevelId() {
+    return this.campaignLevel?.id ?? null;
+  }
+
+  /** Kampagnen-Level wählen (vor Mission-Start) */
+  setCampaignLevel(levelId: string | null) {
+    if (!levelId) {
+      this.campaignLevel = CAMPAIGN_LEVELS[0];
+      return;
+    }
+    this.campaignLevel = getCampaignLevel(levelId);
+  }
+
+  private getActiveWaves(): CampaignWave[] {
+    if (this.campaignLevel) return this.campaignLevel.waves;
+    return CONFIG.mission.waves.map((w) => ({
+      label: w.label,
+      bandits: w.bandits,
+      speedScale: w.speedScale ?? 1,
+      enemyMissiles: w.enemyMissiles !== false,
+      aaa: 0,
+      sams: w.sams,
+    }));
+  }
+
   private clearActors() {
     for (const e of this.enemies) this.engine.scene.remove(e.object);
     this.enemies = [];
     for (const s of this.sams) this.engine.scene.remove(s.object);
     this.sams = [];
+    for (const a of this.aaaUnits) this.engine.scene.remove(a.object);
+    this.aaaUnits = [];
     for (const m of this.missiles) this.engine.scene.remove(m.object);
     this.missiles = [];
     this.enemyFireTimers.clear();
   }
 
+  private pickGroundPosition(minDist = 1500, spread = 7000): THREE.Vector3 {
+    const pos = new THREE.Vector3(
+      this.player.position.x + 2000,
+      50,
+      this.player.position.z - 2500
+    );
+    for (let tries = 0; tries < 48; tries++) {
+      const x = this.player.position.x + (Math.random() * 2 - 1) * spread;
+      const z = this.player.position.z + (Math.random() * 2 - 1) * spread;
+      const y = this.heightField.getHeight(x, z);
+      const half = this.heightField.size * 0.35;
+      const candidate = new THREE.Vector3(x, y, z);
+      if (
+        y > 5 &&
+        y < 2800 &&
+        Math.abs(x) < half &&
+        Math.abs(z) < half &&
+        this.player.position.distanceTo(candidate) > minDist
+      ) {
+        return candidate;
+      }
+    }
+    pos.y = this.heightField.getHeight(pos.x, pos.z);
+    return pos;
+  }
+
   private spawnWave(index: number, forMenu = false) {
-    const wave = CONFIG.mission.waves[index];
+    const waves = this.getActiveWaves();
+    const wave = waves[index];
     if (!wave) return;
 
-    // Tote Actor aus vorheriger Welle entfernen (Array + Szene sauber halten)
     for (const e of this.enemies) {
       if (!e.alive) this.engine.scene.remove(e.object);
     }
@@ -593,10 +656,13 @@ export class Game {
       if (!s.alive) this.engine.scene.remove(s.object);
     }
     this.sams = this.sams.filter((s) => s.alive);
+    for (const a of this.aaaUnits) {
+      if (!a.alive) this.engine.scene.remove(a.object);
+    }
+    this.aaaUnits = this.aaaUnits.filter((a) => a.alive);
 
-    // Bandits — frühe Wellen: mehr Legacy (Props/MiG-15), später Mix mit modernen Jets
     const waveSpeedScale = wave.speedScale ?? 1;
-    const waveEnemyMissiles = wave.enemyMissiles !== false;
+    const waveEnemyMissiles = wave.enemyMissiles === true;
     const newBandits: EnemyJet[] = [];
     for (let i = 0; i < wave.bandits; i++) {
       const jetId = this.pickBanditJetId(index);
@@ -613,7 +679,6 @@ export class Game {
       this.applyEnemyVisual(e);
     }
 
-    // Pro Welle: max. EIN Bandit mit wenigen Raketen (Training: enemyMissiles=false)
     const shots = CONFIG.enemy.missilesPerWave ?? 2;
     if (newBandits.length > 0 && shots > 0 && !forMenu && waveEnemyMissiles) {
       const armed = newBandits.filter((b) => b.loadout.stats.missiles > 0);
@@ -622,32 +687,18 @@ export class Game {
       shooter.assignWaveMissileLoadout(shots);
     }
 
-    // SAM-Stellungen auf das Terrain setzen (mind. 1,5 km vom Spieler weg)
+    const aaaCount = wave.aaa ?? 0;
+    for (let i = 0; i < aaaCount; i++) {
+      const pos = this.pickGroundPosition(1400, 6500);
+      const truck = new AaaTruck(this.aaaUnits.length, pos);
+      this.aaaUnits.push(truck);
+      this.engine.scene.add(truck.object);
+    }
+
+    const samSlow = wave.samFireSlow ?? 1;
     for (let i = 0; i < wave.sams; i++) {
-      const pos = new THREE.Vector3(
-        this.player.position.x + 2000 + i * 400,
-        50,
-        this.player.position.z - 2500 - i * 300
-      );
-      for (let tries = 0; tries < 40; tries++) {
-        const x = (Math.random() * 2 - 1) * 7000;
-        const z = (Math.random() * 2 - 1) * 7000;
-        const y = this.heightField.getHeight(x, z);
-        const half = this.heightField.size * 0.35;
-        if (
-          y > 10 &&
-          y < 2500 &&
-          Math.abs(x) < half &&
-          Math.abs(z) < half &&
-          this.player.position.distanceTo(new THREE.Vector3(x, y, z)) > 1500
-        ) {
-          pos.set(x, y, z);
-          break;
-        }
-      }
-      // Terrain-Höhe final setzen (Fallback-Pos ebenfalls)
-      pos.y = this.heightField.getHeight(pos.x, pos.z);
-      const sam = new SamSite(i, pos);
+      const pos = this.pickGroundPosition(1600, 7200);
+      const sam = new SamSite(this.sams.length, pos, samSlow);
       this.sams.push(sam);
       this.engine.scene.add(sam.object);
     }
@@ -876,6 +927,22 @@ export class Game {
       }
     }
 
+    // --- AAA-Flak-Fahrzeuge ---
+    for (const aaa of this.aaaUnits) {
+      aaa.update(dt, player, (dmg) => {
+        if (!player.alive) return;
+        // Flak-Treffer: leichter Schaden (Level 1 fair)
+        if (Math.random() < 0.35) {
+          this.effects.damageSmoke(player.position.clone());
+        }
+        const killed = player.takeDamage(dmg);
+        if (killed) this.onPlayerKilled();
+      });
+      if (!aaa.alive && Math.random() < dt * 5) {
+        this.effects.damageSmoke(aaa.position.clone().add(new THREE.Vector3(0, 2, 0)));
+      }
+    }
+
     // --- Raketen ---
     for (let i = this.missiles.length - 1; i >= 0; i--) {
       const m = this.missiles[i];
@@ -884,6 +951,7 @@ export class Game {
         if (res.hit) {
           const victim = res.hit;
           const isSam = this.sams.includes(victim as SamSite);
+          const isAaa = this.aaaUnits.includes(victim as AaaTruck);
           const dmg = m.damage;
           const killed = victim.takeDamage(dmg);
           if (victim.isPlayer) {
@@ -891,7 +959,21 @@ export class Game {
           } else if (isSam) {
             if (killed) {
               this.player.score += CONFIG.score.samKill;
+              this.effects.explosion(
+                (victim as SamSite).position.clone().add(new THREE.Vector3(0, 4, 0)),
+                true
+              );
               this.showKillPopup((victim as SamSite).name ?? 'SAM SITE', CONFIG.score.samKill, 'ground');
+              if (this.player.lockTarget === victim) this.clearLock();
+            }
+          } else if (isAaa) {
+            if (killed) {
+              this.player.score += CONFIG.score.aaaKill;
+              this.effects.explosion(
+                (victim as AaaTruck).position.clone().add(new THREE.Vector3(0, 2, 0)),
+                true
+              );
+              this.showKillPopup((victim as AaaTruck).name ?? 'AAA', CONFIG.score.aaaKill, 'ground');
               if (this.player.lockTarget === victim) this.clearLock();
             }
           } else if (killed) {
@@ -1069,8 +1151,9 @@ export class Game {
   private updateMission(dt: number) {
     const banditsLeft = this.enemies.filter((e) => e.alive).length;
     const samsLeft = this.sams.filter((s) => s.alive).length;
+    const aaaLeft = this.aaaUnits.filter((a) => a.alive).length;
 
-    if (banditsLeft > 0 || samsLeft > 0) {
+    if (banditsLeft > 0 || samsLeft > 0 || aaaLeft > 0) {
       this.waveDelay = 0;
       return;
     }
@@ -1080,7 +1163,8 @@ export class Game {
     if (this.waveDelay >= CONFIG.mission.waveDelay) {
       this.waveDelay = 0;
       this.waveIndex++;
-      if (this.waveIndex >= CONFIG.mission.waves.length) {
+      const waves = this.getActiveWaves();
+      if (this.waveIndex >= waves.length) {
         this.state = 'victory';
         this.setPlayCursor(false);
         this.emitHud();
@@ -1101,6 +1185,7 @@ export class Game {
     if (this.player.alive) list.push(this.player);
     for (const e of this.enemies) if (e.alive) list.push(e);
     for (const s of this.sams) if (s.alive) list.push(s);
+    for (const a of this.aaaUnits) if (a.alive) list.push(a);
     return list;
   }
 
@@ -1128,6 +1213,7 @@ export class Game {
       const candidates: Damageable[] = [
         ...this.enemies.filter((e) => e.alive),
         ...this.sams.filter((s) => s.alive),
+        ...this.aaaUnits.filter((a) => a.alive),
       ];
       for (const t of candidates) {
         const to = t.object.position.clone().sub(p.position);
@@ -1210,6 +1296,7 @@ export class Game {
     const targets: Damageable[] = [
       ...this.enemies.filter((e) => e.alive),
       ...this.sams.filter((s) => s.alive),
+      ...this.aaaUnits.filter((a) => a.alive),
     ];
 
     const valid = (t: Damageable | null): t is Damageable =>
@@ -1244,6 +1331,7 @@ export class Game {
       return;
     }
     const isSam = this.sams.includes(victim as SamSite);
+    const isAaa = this.aaaUnits.includes(victim as AaaTruck);
     if (shooter.isPlayer) this.player.score += CONFIG.score.hitBonus;
     if (killed) {
       if (isSam) {
@@ -1251,6 +1339,12 @@ export class Game {
         this.sound.explosion(true);
         this.player.score += CONFIG.score.samKill;
         this.showKillPopup((victim as SamSite).name ?? 'SAM SITE', CONFIG.score.samKill, 'ground');
+        if (this.player.lockTarget === victim) this.clearLock();
+      } else if (isAaa) {
+        this.effects.explosion((victim as AaaTruck).position.clone().add(new THREE.Vector3(0, 2, 0)), true);
+        this.sound.explosion(true);
+        this.player.score += CONFIG.score.aaaKill;
+        this.showKillPopup((victim as AaaTruck).name ?? 'AAA', CONFIG.score.aaaKill, 'ground');
         if (this.player.lockTarget === victim) this.clearLock();
       } else {
         this.onEnemyKilled(victim as unknown as EnemyJet);
@@ -1415,6 +1509,16 @@ export class Game {
         locked: p.lockTarget === (s as unknown as Damageable) && p.lockProgress >= 1,
       });
     }
+    for (const a of this.aaaUnits) {
+      if (!a.alive) continue;
+      const rel = a.position.clone().sub(p.position).applyQuaternion(invQ);
+      radar.push({
+        x: THREE.MathUtils.clamp(rel.x / range, -1, 1),
+        y: THREE.MathUtils.clamp(rel.z / range, -1, 1),
+        kind: 'aaa',
+        locked: p.lockTarget === (a as unknown as Damageable) && p.lockProgress >= 1,
+      });
+    }
     // Eingehende / eigene Lenkwaffen auf dem Radar (WT-Style Threat)
     for (const m of this.missiles) {
       if (!m.alive) continue;
@@ -1449,12 +1553,11 @@ export class Game {
       }
     }
 
-    // Gegner-Marker (Leiste über dem Jet + Distanz)
+    // Gegner-Marker (Leiste über dem Jet/Boden + Distanz)
     const worldMarkers: HudData['worldMarkers'] = [];
     if (this.state === 'playing' || this.state === 'paused') {
       for (const e of this.enemies) {
         if (!e.alive) continue;
-        // Marker etwas über dem Jet
         const world = e.object.position.clone().add(new THREE.Vector3(0, 8, 0));
         const ndc = world.project(this.engine.camera);
         const inFront = ndc.z < 1 && ndc.x > -1.2 && ndc.x < 1.2 && ndc.y > -1.2 && ndc.y < 1.2;
@@ -1468,6 +1571,40 @@ export class Game {
           distM,
           locked: p.lockTarget === (e as unknown as Damageable) && p.lockProgress >= 1,
           visible: inFront && distM < 6000,
+        });
+      }
+      for (const s of this.sams) {
+        if (!s.alive) continue;
+        const world = s.position.clone().add(new THREE.Vector3(0, 10, 0));
+        const ndc = world.project(this.engine.camera);
+        const inFront = ndc.z < 1 && ndc.x > -1.2 && ndc.x < 1.2 && ndc.y > -1.2 && ndc.y < 1.2;
+        const distM = Math.round(s.position.distanceTo(p.position));
+        worldMarkers.push({
+          x: THREE.MathUtils.clamp((ndc.x * 0.5 + 0.5) * 100, 1, 99),
+          y: THREE.MathUtils.clamp((-ndc.y * 0.5 + 0.5) * 100, 1, 99),
+          name: s.name,
+          hp: Math.max(0, Math.round(s.hp)),
+          maxHp: CONFIG.mission.samHp,
+          distM,
+          locked: p.lockTarget === s && p.lockProgress >= 1,
+          visible: inFront && distM < 7000,
+        });
+      }
+      for (const a of this.aaaUnits) {
+        if (!a.alive) continue;
+        const world = a.position.clone().add(new THREE.Vector3(0, 6, 0));
+        const ndc = world.project(this.engine.camera);
+        const inFront = ndc.z < 1 && ndc.x > -1.2 && ndc.x < 1.2 && ndc.y > -1.2 && ndc.y < 1.2;
+        const distM = Math.round(a.position.distanceTo(p.position));
+        worldMarkers.push({
+          x: THREE.MathUtils.clamp((ndc.x * 0.5 + 0.5) * 100, 1, 99),
+          y: THREE.MathUtils.clamp((-ndc.y * 0.5 + 0.5) * 100, 1, 99),
+          name: a.name,
+          hp: Math.max(0, Math.round(a.hp)),
+          maxHp: CONFIG.mission.aaaHp,
+          distM,
+          locked: p.lockTarget === a && p.lockProgress >= 1,
+          visible: inFront && distM < 5500,
         });
       }
     }
@@ -1505,7 +1642,15 @@ export class Game {
     };
     const leadIndicator = this.computeLeadIndicator();
 
-    const wave = CONFIG.mission.waves[Math.min(this.waveIndex, CONFIG.mission.waves.length - 1)];
+    const waves = this.getActiveWaves();
+    const wave = waves[Math.min(this.waveIndex, Math.max(0, waves.length - 1))] ?? {
+      label: 'MISSION',
+      bandits: 0,
+      speedScale: 1,
+      enemyMissiles: false,
+      aaa: 0,
+      sams: 0,
+    };
     const data: HudData = {
       state: this.state,
       speedKnots: Math.round(p.speedKnots),
@@ -1543,9 +1688,10 @@ export class Game {
       worldMarkers,
       damage,
       waveIndex: this.waveIndex,
-      waveCount: CONFIG.mission.waves.length,
+      waveCount: waves.length,
       waveLabel: wave.label,
-      samsLeft: this.sams.filter((s) => s.alive).length,
+      samsLeft:
+        this.sams.filter((s) => s.alive).length + this.aaaUnits.filter((a) => a.alive).length,
       waveBanner: this.waveBannerTimer > 0 ? this.waveBanner : null,
       selectedJetId: this.selectedJetId,
       jetName: this.player.loadout.name,

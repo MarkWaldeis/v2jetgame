@@ -11,6 +11,10 @@ export interface GameSettings {
   aeroCredits: number;
   /** Freigeschaltete Jet-IDs (initial nur f16 + su25) */
   ownedJets: string[];
+  /** Abgeschlossene Kampagnen-Level-IDs */
+  completedCampaignLevels: string[];
+  /** Höchstes freigeschaltetes Level-Index (1–5) */
+  campaignUnlockedMax: number;
 }
 
 const KEY = 'fightjet3d.settings.v1';
@@ -30,6 +34,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
   muted: false,
   aeroCredits: DEV_TEST_CREDITS,
   ownedJets: [...INITIAL_OWNED],
+  completedCampaignLevels: [],
+  campaignUnlockedMax: 1,
 };
 
 export function loadSettings(): GameSettings {
@@ -46,6 +52,11 @@ export function loadSettings(): GameSettings {
       ...parsed,
       masterVolume: Math.max(0, Math.min(1, parsed.masterVolume ?? DEFAULT_SETTINGS.masterVolume)),
       ownedJets: [...(parsed.ownedJets ?? INITIAL_OWNED)],
+      completedCampaignLevels: [...(parsed.completedCampaignLevels ?? [])],
+      campaignUnlockedMax: Math.max(
+        1,
+        Math.min(5, parsed.campaignUnlockedMax ?? 1)
+      ),
       // TEMP: immer genug Credits für den gesamten Jet-Katalog
       aeroCredits: Math.max(
         DEV_TEST_CREDITS,
@@ -89,6 +100,27 @@ export function purchaseJet(jetId: string, price: number): boolean {
   s.ownedJets.push(jetId);
   saveSettings(s);
   return true;
+}
+
+export function isCampaignLevelUnlocked(levelIndex: number): boolean {
+  const s = loadSettings();
+  return levelIndex <= s.campaignUnlockedMax;
+}
+
+export function isCampaignLevelCompleted(levelId: string): boolean {
+  return loadSettings().completedCampaignLevels.includes(levelId);
+}
+
+/** Markiert Level als geschafft, schaltet nächstes frei, Credits gutschreiben */
+export function completeCampaignLevel(levelId: string, levelIndex: number, reward: number): number {
+  const s = loadSettings();
+  if (!s.completedCampaignLevels.includes(levelId)) {
+    s.completedCampaignLevels.push(levelId);
+  }
+  s.campaignUnlockedMax = Math.max(s.campaignUnlockedMax, Math.min(5, levelIndex + 1));
+  s.aeroCredits += reward;
+  saveSettings(s);
+  return s.aeroCredits;
 }
 
 /** Stats 0–100 für Glass-Progress-Balken aus Jet-Def (inkl. WWII-Props ~0.45) */
