@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -15,31 +15,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: Fight Jet Game/app/package-lock.json
-      - run: npm ci --no-audit --no-fund
+
+      - name: Install dependencies
         working-directory: Fight Jet Game/app
+        run: npm ci --no-audit --no-fund
         env:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
-      - run: npm run build
-        working-directory: Fight Jet Game/app
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: Fight Jet Game/app/dist
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Build Vite App
+        working-directory: Fight Jet Game/app
+        run: npm run build
+
+      - name: Deploy build to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./Fight Jet Game/app/dist
+          force_orphan: true
