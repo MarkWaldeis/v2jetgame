@@ -17,6 +17,9 @@ import {
 } from '../lib/gameSettings';
 import { MAP_CATALOG, getMapDef, type MapId } from '../game/world/MapCatalog';
 import { JetSilhouette, NavIcon } from './JetIcons';
+import { JetPreview3D } from './JetPreview3D';
+import { JetThumb } from './JetThumb';
+import { warmJetThumbnails } from '../lib/jetThumbnails';
 
 type Screen = 'main' | 'hangar' | 'maps' | 'missions' | 'settings';
 type SettingsTab = 'graphics' | 'sound' | 'controls';
@@ -184,6 +187,15 @@ export function Menus({
     };
   }, [screen, faction]);
 
+  // Hangar-Karten: GLB-Thumbnails vorwärmen (Faction zuerst)
+  useEffect(() => {
+    if (screen !== 'hangar' && screen !== 'main') return;
+    const all = jetsSortedByPrice();
+    const factionIds = all.filter((j) => j.faction === faction).map((j) => j.id);
+    const rest = all.filter((j) => j.faction !== faction).map((j) => j.id);
+    void warmJetThumbnails([...factionIds, ...rest]);
+  }, [screen, faction]);
+
   if (state === 'playing') return null;
 
   const patchSettings = (partial: Partial<GameSettings>) =>
@@ -211,7 +223,10 @@ export function Menus({
   };
 
   const startMission = () => {
-    // Explizit Mission starten (Ladescreen + Spiel)
+    if (!isJetOwned(selectedJetId)) {
+      openHangar();
+      return;
+    }
     onStart(selectedJetId);
   };
 
@@ -278,42 +293,46 @@ export function Menus({
     </div>
   );
 
-  // ─── Top Bar (command strip) ───────────────────────────────────────────
+  // ─── Top Bar (War Thunder: To Battle oben) ──────────────────────────────
   const TopBar = () => (
     <div className="topbar">
-      <button type="button" className="topbar-chip" onClick={openHangar} title="Jet wechseln — Hangar öffnen">
-        <span className="topbar-chip-icon">
-          <JetSilhouette jetId={selected.id} faction={selected.faction} size="sm" />
+      <button
+        type="button"
+        className="topbar-start topbar-start--primary"
+        onClick={startMission}
+        title="Mission starten"
+      >
+        <span className="topbar-start-icon">
+          <NavIcon name="launch" />
         </span>
-        <div className="min-w-0 text-left">
-          <div className="topbar-chip-label">Airframe</div>
-          <div className="topbar-chip-value truncate">{selected.name}</div>
-          <div className="topbar-chip-sub truncate">
-            {selected.callsign} · {selected.role}
-          </div>
-        </div>
+        <span>TO BATTLE</span>
       </button>
 
-      <button type="button" className="topbar-chip" onClick={() => navigateTo('maps')} title="Map wechseln">
+      <button type="button" className="topbar-chip" onClick={() => navigateTo('maps')} title="Map wählen">
         <span className="topbar-chip-icon">
           <NavIcon name="map" />
         </span>
         <div className="min-w-0 text-left">
-          <div className="topbar-chip-label">Theater</div>
+          <div className="topbar-chip-label">Map wählen</div>
           <div className="topbar-chip-value truncate">{selectedMap?.name ?? selectedMapId}</div>
           <div className="topbar-chip-sub">{mapKm} × {mapKm} km</div>
         </div>
       </button>
 
+      {screen !== 'main' && (
+        <button type="button" className="topbar-chip" onClick={openHangar} title="Hangar">
+          <span className="topbar-chip-icon">
+            <JetSilhouette jetId={selected.id} faction={selected.faction} size="sm" />
+          </span>
+          <div className="min-w-0 text-left">
+            <div className="topbar-chip-label">Airframe</div>
+            <div className="topbar-chip-value truncate">{selected.name}</div>
+            <div className="topbar-chip-sub truncate">{selected.callsign}</div>
+          </div>
+        </button>
+      )}
+
       <div className="topbar-spacer" />
-
-      <button type="button" className="topbar-start" onClick={startMission} title="Mission starten">
-        <span className="topbar-start-icon">
-          <NavIcon name="launch" />
-        </span>
-        <span>SCRAMBLE</span>
-      </button>
-
       <CreditsBadge compact />
     </div>
   );
@@ -604,181 +623,220 @@ export function Menus({
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <HangarBackground />
 
-        {/* ═══════════════ MAIN LANDING ═══════════════ */}
+        {/* ═══════════════ MAIN COMMAND — 3D jet hero (WT style) ═══════════════ */}
         {screen === 'main' && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-y-auto px-4 py-8 sm:px-8">
-            <div className="pointer-events-auto main-landing w-full max-w-2xl">
-              <div className="mb-7 text-center">
-                <div className="ops-status-chip mb-3">
-                  <span className="ops-status-dot" />
-                  Combat Ready
+          <div className="cmd-stage absolute inset-0">
+            <div className="cmd-stage-3d pointer-events-auto">
+              <JetPreview3D
+                key={`hero-${selectedJetId}`}
+                jetId={selectedJetId}
+                mode="hero"
+                autoRotate
+                interactive
+              />
+            </div>
+
+            <div className="cmd-stage-vignette pointer-events-none" />
+
+            {/* Brand watermark — not blocking center */}
+            <div className="cmd-brand pointer-events-none">
+              <div className="ops-status-chip">
+                <span className="ops-status-dot" />
+                Combat Ready
+              </div>
+              <div className="cmd-brand-title">
+                FIGHT JET <span className="main-title-gradient">3D</span>
+              </div>
+            </div>
+
+            {/* Bottom HUD strip — few actions only */}
+            <div className="cmd-bottom pointer-events-none">
+              <button
+                type="button"
+                className="cmd-plate pointer-events-auto"
+                onClick={openHangar}
+                title="Hangar öffnen"
+              >
+                <div className="cmd-plate-thumb">
+                  <JetThumb jetId={selected.id} faction={selected.faction} />
                 </div>
-                <h1 className="font-display main-title mb-2 text-5xl font-black tracking-[0.08em] sm:text-6xl md:text-7xl">
-                  <span className="text-[#f0ecd8] drop-shadow-[0_0_30px_rgba(201,162,39,0.2)]">FIGHT JET</span>{' '}
-                  <span className="main-title-gradient">3D</span>
-                </h1>
-                <p className="text-sm uppercase tracking-[0.28em] text-white/35">
-                  Steel Ops · Tactical Air Combat
-                </p>
-              </div>
-
-              <div className="mb-5 grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={openHangar}
-                  className="main-info-card group text-left"
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300/75">
-                      Airframe
-                    </span>
-                    <span className="transition-transform duration-300 group-hover:scale-110">
-                      <JetSilhouette jetId={selected.id} faction={selected.faction} size="sm" />
-                    </span>
+                <div className="min-w-0 text-left">
+                  <div className="cmd-plate-label">Airframe · Hangar</div>
+                  <div className="cmd-plate-name truncate">{selected.name}</div>
+                  <div className="cmd-plate-sub truncate">
+                    {selected.callsign} · {FACTION_LABELS[selected.faction]}
                   </div>
-                  <div className="font-display text-lg font-bold leading-tight text-white">{selected.name}</div>
-                  <div className="mt-0.5 text-sm text-amber-200/75">{selected.callsign}</div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-white/40">
-                    <span>{selected.role}</span>
-                    <span className="text-white/20">·</span>
-                    <span className="text-amber-400/60">{FACTION_LABELS[selected.faction]}</span>
-                  </div>
-                  <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/25 transition-colors group-hover:text-amber-300/70">
-                    Hangar öffnen →
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => navigateTo('maps')}
-                  className="main-info-card group text-left"
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300/75">
-                      Theater
-                    </span>
-                    <span className="text-amber-200/70 transition-transform duration-300 group-hover:scale-110">
-                      <NavIcon name="map" />
-                    </span>
-                  </div>
-                  <div className="font-display text-lg font-bold leading-tight text-white">
-                    {selectedMap?.name ?? selectedMapId}
-                  </div>
-                  <div className="mt-0.5 text-sm text-white/50">
-                    {selectedMap?.subtitle ?? 'Operations Area'}
-                  </div>
-                  <div className="mt-2 text-[11px] text-white/40">
-                    {mapKm} × {mapKm} km Weltgröße
-                  </div>
-                  <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/25 transition-colors group-hover:text-amber-300/70">
-                    Theater wählen →
-                  </div>
-                </button>
-              </div>
+                </div>
+              </button>
 
               <button
                 type="button"
-                className="main-cta"
-                onClick={startMission}
+                className="cmd-plate pointer-events-auto"
+                onClick={() => navigateTo('maps')}
+                title="Map wählen"
               >
-                <span className="main-cta-glow" aria-hidden="true" />
-                <span className="relative z-10 flex items-center justify-center gap-3">
-                  <NavIcon name="launch" />
-                  <span>MISSION STARTEN</span>
-                  <span className="hidden opacity-50 sm:inline">·</span>
-                  <span className="hidden font-normal tracking-[0.12em] opacity-80 sm:inline">
-                    {selected.callsign}
-                  </span>
-                </span>
+                <div className="cmd-plate-icon">
+                  <NavIcon name="map" />
+                </div>
+                <div className="min-w-0 text-left">
+                  <div className="cmd-plate-label">Map wählen</div>
+                  <div className="cmd-plate-name truncate">{selectedMap?.name ?? selectedMapId}</div>
+                  <div className="cmd-plate-sub">
+                    {mapKm} × {mapKm} km
+                  </div>
+                </div>
               </button>
-
-              <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                {(
-                  [
-                    { icon: 'hangar' as const, label: 'Hangar', action: () => navigateTo('hangar') },
-                    { icon: 'maps' as const, label: 'Theater', action: () => navigateTo('maps') },
-                    { icon: 'campaign' as const, label: 'Kampagne', action: () => navigateTo('missions') },
-                    { icon: 'settings' as const, label: 'Systeme', action: () => navigateTo('settings') },
-                  ] as const
-                ).map(({ icon, label, action }) => (
-                  <button key={label} type="button" onClick={action} className="main-quick-link">
-                    <span className="mb-1.5 flex justify-center text-amber-200/70">
-                      <NavIcon name={icon} />
-                    </span>
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              <p className="mt-6 text-center text-[10px] uppercase tracking-[0.2em] text-white/20">
-                Esc / P · Pause im Flug · Maus steuert den Jet
-              </p>
             </div>
+
+            <p className="cmd-hint pointer-events-none">
+              Jet drehen · Scroll zoom · Navigation über Sidebar
+            </p>
           </div>
         )}
 
-        {/* ═══════════════ HANGAR / GARAGE ═══════════════ */}
+        {/* ═══════════════ HANGAR — WT vehicle select ═══════════════ */}
         {screen === 'hangar' && (
-          <div className="pointer-events-none absolute inset-0 flex items-start justify-center overflow-y-auto px-3 pb-8 pt-6 sm:items-center sm:pt-8">
-            <div className="glass-panel pointer-events-auto flex max-h-[min(90vh,920px)] w-full max-w-5xl flex-col overflow-hidden p-5 sm:p-7">
-              <div className="mb-1 flex shrink-0 items-center justify-between gap-3">
+          <div className="hangar-stage absolute inset-0 flex flex-col">
+            {/* Header */}
+            <div className="hangar-stage-header pointer-events-auto shrink-0">
+              <div>
                 <div className="glass-eyebrow">Hangar Bay</div>
+                <h2 className="glass-title text-2xl text-white sm:text-3xl">Fleet Select</h2>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {(['nato', 'russia'] as JetFaction[]).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    className={`glass-pill px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] ${
+                      faction === f
+                        ? 'border-[rgba(201,162,39,0.55)] bg-[rgba(201,162,39,0.14)] text-[#f0ecd8]'
+                        : 'bg-black/30 text-white/50 hover:text-white/80'
+                    }`}
+                    onClick={() => {
+                      setFaction(f);
+                      // Vorschau auf ersten freigeschalteten Jet der Fraktion
+                      const pick =
+                        sortedJets.find((j) => j.faction === f && isJetOwned(j.id)) ??
+                        sortedJets.find((j) => j.faction === f);
+                      if (pick && isJetOwned(pick.id)) onSelectJet(pick.id);
+                    }}
+                  >
+                    {FACTION_LABELS[f]}
+                  </button>
+                ))}
                 <button
                   type="button"
                   className="glass-button glass-button-ghost !px-3 !py-1.5 !text-xs"
                   onClick={() => navigateTo('main')}
                 >
-                  ← Zurück
+                  ← Kommando
                 </button>
               </div>
-              <h2 className="glass-title mb-1 shrink-0 text-3xl text-white">Airframe wählen</h2>
-              <p className="glass-subtitle mb-4 shrink-0 text-sm">
-                Fleet roster — eigene Physik, Bewaffnung und Signature pro Jet.
-              </p>
+            </div>
 
-              <div className="mb-4 flex shrink-0 flex-wrap gap-2">
-                {(['nato', 'russia'] as JetFaction[]).map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    className={`glass-pill px-5 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition-all duration-200 ${
-                      faction === f
-                        ? 'border-[rgba(201,162,39,0.55)] bg-[rgba(201,162,39,0.14)] text-[#f0ecd8] shadow-[0_0_12px_rgba(201,162,39,0.12)]'
-                        : 'bg-black/25 text-white/50 hover:bg-white/[0.06] hover:text-white/75'
-                    }`}
-                    onClick={() => setFaction(f)}
+            {/* Main: 3D + info */}
+            <div className="hangar-stage-body min-h-0 flex-1">
+              <div className="hangar-stage-3d pointer-events-auto">
+                <JetPreview3D
+                  key={`hangar-${selectedJetId}`}
+                  jetId={selectedJetId}
+                  mode="hangar"
+                  autoRotate
+                  interactive
+                />
+              </div>
+
+              <aside className="hangar-stage-info pointer-events-auto glass-panel">
+                <div className="mb-2 flex flex-wrap items-baseline gap-2">
+                  <div className="font-display text-xl font-bold tracking-wide text-[#f0ecd8]">
+                    {selected.name}
+                  </div>
+                  <div
+                    className="text-[10px] uppercase tracking-wider"
+                    style={{ color: selected.faction === 'nato' ? 'var(--nato)' : 'var(--russia)' }}
                   >
-                    {FACTION_LABELS[f]} ({JET_CATALOG.filter((j) => j.faction === f).length})
-                  </button>
-                ))}
-              </div>
-
-              {/* Jet-Leiste mit Pfeilen + horizontalem Scroll (Mausrad / Drag / Touch) */}
-              <div className="hangar-strip mb-5 shrink-0">
+                    {FACTION_LABELS[selected.faction]}
+                  </div>
+                </div>
+                <div className="mb-2 text-sm text-amber-200/80">{selected.callsign}</div>
+                <p className="mb-3 text-sm text-white/60">{selected.description}</p>
+                <p className="mb-4 text-xs text-amber-100/75">
+                  <span className="font-semibold text-amber-300">{selected.special.label}</span>
+                  {' — '}
+                  {selected.special.detail}
+                </p>
+                <StatBar label="Geschwindigkeit" value={bars.speed} />
+                <StatBar label="Manövrierfähigkeit" value={bars.maneuver} />
+                <StatBar label="Panzerung" value={bars.armor} />
+                <StatBar label="Bewaffnung" value={bars.weapons} />
+                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-white/45">
+                  <div>
+                    HP <span className="glass-mono text-white">{selected.stats.hp}</span>
+                  </div>
+                  <div>
+                    Raketen{' '}
+                    <span className="glass-mono text-white">
+                      {selected.stats.missiles > 0 ? selected.stats.missiles : '—'}
+                    </span>
+                  </div>
+                  <div>
+                    Kanone{' '}
+                    <span className="glass-mono text-white">
+                      {selected.stats.cannonDamage} dmg
+                    </span>
+                  </div>
+                  <div>
+                    Lock{' '}
+                    <span className="glass-mono text-white">
+                      {selected.stats.lockRange > 0 ? `${selected.stats.lockRange} m` : '—'}
+                    </span>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  className={`hangar-scroll-btn hangar-scroll-btn-left ${hangarCanScrollLeft ? 'is-visible' : ''}`}
-                  aria-label="Jets nach links scrollen"
-                  disabled={!hangarCanScrollLeft}
-                  onClick={() => scrollHangar(-1)}
+                  className={`mt-4 w-full py-3.5 text-sm font-bold uppercase tracking-[0.12em] ${
+                    isJetOwned(selectedJetId)
+                      ? 'glass-button glass-button-primary'
+                      : 'cursor-not-allowed border border-white/10 bg-black/40 text-white/25'
+                  }`}
+                  style={{ borderRadius: 3 }}
+                  disabled={!isJetOwned(selectedJetId)}
+                  onClick={startMission}
                 >
-                  ‹
+                  {isJetOwned(selectedJetId)
+                    ? `TO BATTLE · ${selected.callsign}`
+                    : 'GESPERRT'}
                 </button>
-                <button
-                  type="button"
-                  className={`hangar-scroll-btn hangar-scroll-btn-right ${hangarCanScrollRight ? 'is-visible' : ''}`}
-                  aria-label="Jets nach rechts scrollen"
-                  disabled={!hangarCanScrollRight}
-                  onClick={() => scrollHangar(1)}
-                >
-                  ›
-                </button>
+              </aside>
+            </div>
 
-                <div
-                  ref={hangarScrollRef}
-                  className="hangar-scroll-container"
-                  onScroll={updateHangarScrollState}
-                >
+            {/* Bottom vehicle strip — WT style cards with real jet renders */}
+            <div className="hangar-stage-strip pointer-events-auto shrink-0">
+              <button
+                type="button"
+                className={`hangar-scroll-btn hangar-scroll-btn-left ${hangarCanScrollLeft ? 'is-visible' : ''}`}
+                aria-label="Links"
+                disabled={!hangarCanScrollLeft}
+                onClick={() => scrollHangar(-1)}
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                className={`hangar-scroll-btn hangar-scroll-btn-right ${hangarCanScrollRight ? 'is-visible' : ''}`}
+                aria-label="Rechts"
+                disabled={!hangarCanScrollRight}
+                onClick={() => scrollHangar(1)}
+              >
+                ›
+              </button>
+
+              <div
+                ref={hangarScrollRef}
+                className="hangar-scroll-container hangar-scroll-container--wt"
+                onScroll={updateHangarScrollState}
+              >
                 {sortedJets
                   .filter((j) => j.faction === faction)
                   .map((jet) => {
@@ -786,217 +844,55 @@ export function Menus({
                     const owned = isJetOwned(jet.id);
                     const locked = !owned && jet.price > 0;
                     const canAfford = aeroCredits >= jet.price;
-                    const jBars = jetStatBars(jet.stats);
                     return (
                       <div
                         key={jet.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => {
-                          if (owned) onSelectJet(jet.id);
+                          // Auch gesperrte Jets anschauen (kaufen separat)
+                          onSelectJet(jet.id);
                         }}
-                        className={`glass-card hangar-jet-card relative w-[220px] flex-shrink-0 cursor-pointer snap-start text-left sm:w-[240px] ${
-                          active ? 'is-selected' : ''
-                        } ${locked ? 'opacity-75' : ''}`}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') onSelectJet(jet.id);
+                        }}
+                        className={`wt-jet-card ${active ? 'is-selected' : ''} ${locked ? 'is-locked' : ''}`}
                       >
                         <div
-                          className={`-mx-[16px] -mt-[14px] mb-3 h-[3px] ${
-                            jet.faction === 'nato'
-                              ? 'ops-faction-stripe-nato'
-                              : 'ops-faction-stripe-russia'
+                          className={`wt-jet-card-stripe ${
+                            jet.faction === 'nato' ? 'ops-faction-stripe-nato' : 'ops-faction-stripe-russia'
                           }`}
                         />
-
-                        <JetSilhouette
-                          jetId={jet.id}
-                          faction={jet.faction}
-                          locked={locked}
-                        />
-
-                        <div className="mb-3 flex items-start gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="font-display text-sm font-bold leading-tight tracking-wide text-[#f0ecd8]">
-                              {jet.name}
-                            </div>
-                            <div className="text-[10px] uppercase tracking-[0.1em] text-white/35">
-                              {jet.role}
-                            </div>
-                          </div>
-                          {active && (
-                            <div
-                              className="mt-1 h-2 w-2 shrink-0 animate-pulse"
-                              style={{
-                                background: 'var(--accent-brass)',
-                                boxShadow: '0 0 8px rgba(201,162,39,0.7)',
-                              }}
-                            />
-                          )}
-                        </div>
-
-                        <div className="mb-3 space-y-2">
-                          {(
-                            [
-                              ['Speed', jBars.speed],
-                              ['Wendigkeit', jBars.maneuver],
-                              ['Panzerung', jBars.armor],
-                            ] as const
-                          ).map(([label, val]) => (
-                            <div key={label}>
-                              <div className="mb-0.5 flex justify-between text-[9px]">
-                                <span className="uppercase tracking-[0.1em] text-white/40">{label}</span>
-                                <span className="font-mono text-white/50">{val}</span>
-                              </div>
-                              <div className="h-1.5 overflow-hidden bg-black/40 border border-white/[0.06]">
-                                <div
-                                  className="h-full transition-all duration-700 ease-out"
-                                  style={{
-                                    width: `${val}%`,
-                                    background: locked
-                                      ? 'linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.2))'
-                                      : 'linear-gradient(90deg, #6b7a35, #c9a227)',
-                                    boxShadow: locked ? 'none' : '0 0 6px rgba(201,162,39,0.35)',
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {locked ? (
-                          <button
-                            type="button"
-                            className={`flex w-full items-center justify-center gap-2 py-2.5 text-[11px] font-bold uppercase tracking-[0.08em] transition-all duration-200 ${
-                              canAfford
-                                ? 'border border-amber-500/40 bg-gradient-to-b from-amber-600/25 to-amber-900/20 text-amber-100 hover:border-amber-400/60 hover:from-amber-500/35'
-                                : 'cursor-not-allowed border border-white/[0.06] bg-black/30 text-white/25'
-                            }`}
-                            style={{ borderRadius: 3 }}
-                            disabled={!canAfford}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (canAfford) {
+                        <JetThumb jetId={jet.id} faction={jet.faction} locked={locked} />
+                        <div className="wt-jet-card-body">
+                          <div className="wt-jet-card-name">{jet.name}</div>
+                          <div className="wt-jet-card-role">{jet.role}</div>
+                          {locked ? (
+                            <button
+                              type="button"
+                              className={`wt-jet-card-buy ${canAfford ? 'can-buy' : ''}`}
+                              disabled={!canAfford}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!canAfford) return;
                                 const ok = onPurchaseJet(jet.id, jet.price);
                                 if (ok) onSelectJet(jet.id);
-                              }
-                            }}
-                          >
-                            <img
-                              src="./aero_credits.jpg"
-                              alt="AC"
-                              className="h-4 w-4 object-cover border border-amber-600/40"
-                              style={{ animation: 'coin-spin 4s linear infinite', borderRadius: 2 }}
-                            />
-                            {jet.price.toLocaleString()} AC
-                          </button>
-                        ) : owned ? (
-                          <button
-                            type="button"
-                            className={`w-full py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] transition-all duration-200 ${
-                              active
-                                ? 'border border-amber-500/50 bg-gradient-to-b from-amber-500/35 to-amber-800/30 text-[#1a1608]'
-                                : 'border border-white/[0.1] bg-black/25 text-white/60 hover:border-amber-500/30 hover:bg-white/[0.06] hover:text-white/90'
-                            }`}
-                            style={{ borderRadius: 3 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSelectJet(jet.id);
-                            }}
-                          >
-                            {active ? 'Ausgewählt' : 'Auswählen'}
-                          </button>
-                        ) : null}
+                              }}
+                            >
+                              <img src="./aero_credits.jpg" alt="" className="h-3.5 w-3.5 object-cover" />
+                              {jet.price.toLocaleString()}
+                            </button>
+                          ) : (
+                            <div className={`wt-jet-card-status ${active ? 'is-active' : ''}`}>
+                              {active ? 'SELECTED' : 'READY'}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
-                  {/* Spacer: letztes Jet-Card voll sichtbar / anscrollbar */}
-                  <div className="hangar-scroll-end-pad" aria-hidden="true" />
-                </div>
-                <p className="hangar-scroll-hint">
-                  ← → Pfeile · Mausrad · ziehen · Scrollleiste
-                </p>
+                <div className="hangar-scroll-end-pad" aria-hidden="true" />
               </div>
-
-              <div className="ops-detail-panel mb-5 grid shrink-0 gap-5 lg:grid-cols-2">
-                <div>
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <div className="font-display text-xl font-bold tracking-wide text-[#f0ecd8]">
-                      {selected.name}
-                    </div>
-                    <div
-                      className="text-xs uppercase tracking-wider"
-                      style={{ color: selected.faction === 'nato' ? 'var(--nato)' : 'var(--russia)' }}
-                    >
-                      {FACTION_LABELS[selected.faction]}
-                    </div>
-                  </div>
-                  <p className="mt-2 text-sm text-white/65">{selected.description}</p>
-                  <p className="mt-3 text-xs text-amber-100/80">
-                    <span className="font-semibold text-amber-300">{selected.special.label}</span>
-                    {' — '}
-                    {selected.special.detail}
-                  </p>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-white/45 sm:grid-cols-4">
-                    <div>
-                      HP <span className="glass-mono text-white">{selected.stats.hp}</span>
-                    </div>
-                    <div>
-                      Raketen{' '}
-                      <span className="glass-mono text-white">
-                        {selected.stats.missiles > 0 ? selected.stats.missiles : '—'}
-                      </span>
-                    </div>
-                    <div>
-                      Kanone{' '}
-                      <span className="glass-mono text-white">
-                        {selected.stats.cannonDamage} · {selected.stats.cannonRPM} rpm
-                      </span>
-                    </div>
-                    <div>
-                      {selected.engineType === 'piston' ? (
-                        <>
-                          Motor <span className="glass-mono text-amber-200">Kolben</span>
-                        </>
-                      ) : (
-                        <>
-                          Lock{' '}
-                          <span className="glass-mono text-white">
-                            {selected.stats.lockRange > 0 ? `${selected.stats.lockRange} m` : '—'}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {!selected.physics.hasAfterburner && (
-                    <p className="mt-2 text-[11px] text-white/40">
-                      Kein Nachbrenner
-                      {selected.engineType === 'piston'
-                        ? ' · Propeller-Torque & P-Faktor bei Vollgas'
-                        : ' · Early-Jet-Schub'}
-                      {selected.physics.windSusceptibility > 1 ? ' · windempfindlich / Wing Flutter' : ''}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <StatBar label="Geschwindigkeit" value={bars.speed} />
-                  <StatBar label="Manövrierfähigkeit" value={bars.maneuver} />
-                  <StatBar label="Panzerung" value={bars.armor} />
-                  <StatBar label="Bewaffnung" value={bars.weapons} />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className={`w-full shrink-0 py-4 text-base font-bold uppercase tracking-[0.12em] transition-all duration-200 ${
-                  isJetOwned(selectedJetId)
-                    ? 'glass-button glass-button-primary'
-                    : 'cursor-not-allowed border border-white/[0.06] bg-black/30 text-white/20'
-                }`}
-                style={{ borderRadius: 3 }}
-                disabled={!isJetOwned(selectedJetId)}
-                onClick={startMission}
-              >
-                {isJetOwned(selectedJetId)
-                  ? `SCRAMBLE · ${selected.callsign}`
-                  : 'AIRFRAME GESPERRT'}
-              </button>
             </div>
           </div>
         )}

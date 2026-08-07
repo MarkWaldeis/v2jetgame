@@ -952,6 +952,15 @@
   transition: filter 0.15s ease, transform 0.12s ease;
 }
 
+.topbar-start--primary {
+  padding: 12px 28px;
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  box-shadow:
+    0 6px 22px rgba(201, 162, 39, 0.35),
+    inset 0 1px 0 rgba(255, 240, 180, 0.45);
+}
+
 .topbar-start:hover {
   filter: brightness(1.08);
   transform: translateY(-1px);
@@ -963,6 +972,466 @@
 
 .topbar-start-icon {
   font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMMAND STAGE — 3D hero main menu
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.cmd-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.cmd-stage-3d {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.cmd-stage-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 45%, transparent 30%, rgba(0, 0, 0, 0.45) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, transparent 18%, transparent 70%, rgba(0, 0, 0, 0.65) 100%);
+  pointer-events: none;
+}
+
+.cmd-brand {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.cmd-brand-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.4rem, 3.5vw, 2.4rem);
+  letter-spacing: 0.14em;
+  color: rgba(240, 236, 216, 0.88);
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+}
+
+.cmd-bottom {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 28px;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.cmd-plate {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: min(280px, 100%);
+  max-width: 360px;
+  padding: 10px 14px;
+  background: linear-gradient(160deg, rgba(22, 26, 18, 0.92) 0%, rgba(10, 12, 9, 0.95) 100%);
+  border: 1px solid rgba(201, 162, 39, 0.35);
+  border-radius: var(--radius-sm);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.cmd-plate:hover {
+  border-color: rgba(201, 162, 39, 0.65);
+  transform: translateY(-2px);
+}
+
+.cmd-plate-thumb {
+  width: 72px;
+  height: 52px;
+  flex-shrink: 0;
+  border: 1px solid rgba(138, 148, 110, 0.3);
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.cmd-plate-thumb .jet-thumb {
+  width: 100%;
+  height: 100%;
+}
+
+.cmd-plate-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(201, 162, 39, 0.3);
+  background: rgba(201, 162, 39, 0.08);
+  color: var(--accent-brass-hi);
+  flex-shrink: 0;
+}
+
+.cmd-plate-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(201, 162, 39, 0.75);
+}
+
+.cmd-plate-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #f0ecd8;
+  line-height: 1.2;
+}
+
+.cmd-plate-sub {
+  font-size: 11px;
+  color: rgba(232, 230, 212, 0.45);
+}
+
+.cmd-hint {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 212, 0.28);
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   3D PREVIEW + THUMBS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.jet-preview3d {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  background: transparent;
+}
+
+.jet-preview3d-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 2;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(201, 162, 39, 0.7);
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(8, 10, 7, 0.4) 0%, transparent 70%);
+}
+
+.jet-preview3d-status.is-error {
+  color: #d4453a;
+}
+
+.jet-preview3d-err {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: rgba(232, 230, 212, 0.4);
+  max-width: 280px;
+  text-align: center;
+}
+
+.jet-preview3d-spinner {
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(201, 162, 39, 0.2);
+  border-top-color: var(--accent-brass);
+  border-radius: 50%;
+  animation: jetSpin 0.9s linear infinite;
+}
+
+@keyframes jetSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.jet-preview3d-hint {
+  position: absolute;
+  bottom: 12px;
+  right: 14px;
+  z-index: 2;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 212, 0.35);
+  pointer-events: none;
+  text-shadow: 0 1px 4px #000;
+}
+
+.jet-thumb {
+  position: relative;
+  width: 100%;
+  height: 96px;
+  background:
+    linear-gradient(180deg, rgba(20, 28, 16, 0.9) 0%, rgba(6, 8, 5, 0.95) 100%),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 6px,
+      rgba(201, 162, 39, 0.03) 6px,
+      rgba(201, 162, 39, 0.03) 12px
+    );
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jet-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center 55%;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.55));
+  transform: scale(1.08);
+}
+
+.jet-thumb-fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.45) 100%);
+  pointer-events: none;
+}
+
+.jet-thumb.is-locked {
+  filter: grayscale(0.45) brightness(0.7);
+}
+
+.jet-thumb--fallback .jet-icon-plate {
+  height: 100%;
+  margin: 0;
+  border: none;
+  background: transparent;
+}
+
+.jet-thumb-loading {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(201, 162, 39, 0.08) 50%,
+    transparent 100%
+  );
+  animation: thumbShimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes thumbShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HANGAR STAGE — full WT-style layout
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.hangar-stage {
+  z-index: 2;
+}
+
+.hangar-stage-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px 8px;
+  background: linear-gradient(180deg, rgba(8, 10, 7, 0.75) 0%, transparent 100%);
+  z-index: 5;
+}
+
+.hangar-stage-body {
+  display: grid;
+  grid-template-columns: 1fr minmax(260px, 320px);
+  gap: 12px;
+  padding: 0 12px;
+  min-height: 0;
+  z-index: 3;
+}
+
+@media (max-width: 900px) {
+  .hangar-stage-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(220px, 1fr) auto;
+  }
+}
+
+.hangar-stage-3d {
+  position: relative;
+  min-height: 240px;
+  border: 1px solid rgba(138, 148, 110, 0.2);
+  background: radial-gradient(ellipse at 50% 60%, rgba(30, 38, 22, 0.35) 0%, rgba(0, 0, 0, 0.25) 70%);
+  overflow: hidden;
+}
+
+.hangar-stage-info {
+  padding: 16px 18px;
+  overflow-y: auto;
+  max-height: 100%;
+  align-self: stretch;
+}
+
+.hangar-stage-strip {
+  position: relative;
+  padding: 10px 12px 14px;
+  background: linear-gradient(0deg, rgba(6, 8, 5, 0.95) 0%, rgba(12, 14, 11, 0.88) 100%);
+  border-top: 1px solid rgba(138, 148, 110, 0.25);
+  z-index: 5;
+}
+
+.hangar-scroll-container--wt {
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+/* WT-style vehicle cards */
+.wt-jet-card {
+  position: relative;
+  flex: 0 0 168px;
+  width: 168px;
+  scroll-snap-align: start;
+  background: linear-gradient(180deg, rgba(28, 34, 22, 0.95) 0%, rgba(12, 14, 10, 0.98) 100%);
+  border: 1px solid rgba(138, 148, 110, 0.28);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.wt-jet-card:hover {
+  border-color: rgba(201, 162, 39, 0.45);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+
+.wt-jet-card.is-selected {
+  border-color: rgba(201, 162, 39, 0.7);
+  box-shadow:
+    0 0 0 1px rgba(201, 162, 39, 0.35),
+    0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+.wt-jet-card.is-locked {
+  opacity: 0.78;
+}
+
+.wt-jet-card-stripe {
+  height: 3px;
+  width: 100%;
+}
+
+.wt-jet-card .jet-thumb {
+  height: 88px;
+}
+
+.wt-jet-card-body {
+  padding: 8px 10px 10px;
+}
+
+.wt-jet-card-name {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #f0ecd8;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wt-jet-card-role {
+  margin-top: 2px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(232, 230, 212, 0.38);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wt-jet-card-status {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  padding: 5px 0;
+  border: 1px solid rgba(138, 148, 110, 0.25);
+  color: rgba(232, 230, 212, 0.5);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.wt-jet-card-status.is-active {
+  border-color: rgba(201, 162, 39, 0.5);
+  color: #1a1608;
+  background: linear-gradient(180deg, #c9a227, #8a7018);
+}
+
+.wt-jet-card-buy {
+  margin-top: 8px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  border: 1px solid rgba(138, 148, 110, 0.2);
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(232, 230, 212, 0.3);
+  cursor: not-allowed;
+}
+
+.wt-jet-card-buy.can-buy {
+  border-color: rgba(201, 162, 39, 0.45);
+  background: linear-gradient(180deg, rgba(201, 162, 39, 0.2), rgba(120, 90, 20, 0.25));
+  color: #f0e0a0;
+  cursor: pointer;
+}
+
+.wt-jet-card-buy.can-buy:hover {
+  filter: brightness(1.1);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
