@@ -16,6 +16,7 @@ import {
   type GraphicsQuality,
 } from '../lib/gameSettings';
 import { MAP_CATALOG, getMapDef, type MapId } from '../game/world/MapCatalog';
+import { JetSilhouette, NavIcon } from './JetIcons';
 
 type Screen = 'main' | 'hangar' | 'maps' | 'missions' | 'settings';
 type SettingsTab = 'graphics' | 'sound' | 'controls';
@@ -35,18 +36,6 @@ const CONTROLS: { key: string; label: string }[] = [
   { key: 'V', label: 'Cockpit / Chase' },
   { key: 'P / Esc', label: 'Pause' },
 ];
-
-/** Visuelles Jet-Emoji für Top-Bar / Silhouette-Kontext */
-const JET_EMOJI: Record<JetId, string> = {
-  f16: '✈️',
-  f35: '🛫',
-  elite: '⚡',
-  f14: '🦅',
-  l39: '🛩️',
-  su25: '💥',
-  su34: '🛡️',
-  su57: '🔥',
-};
 
 function StatBar({ label, value }: { label: string; value: number }) {
   const v = Math.max(0, Math.min(100, value));
@@ -108,7 +97,6 @@ export function Menus({
   const selectedMap = getMapDef(selectedMapId);
   const sortedJets = jetsSortedByPrice();
   const bars = jetStatBars(selected.stats);
-  const jetEmoji = JET_EMOJI[selected.id] ?? '✈️';
   const mapKm = selectedMap ? (selectedMap.worldSizeM / 1000).toFixed(0) : '—';
 
   const pickMap = async (id: MapId) => {
@@ -228,12 +216,16 @@ export function Menus({
   };
 
   // ─── Sidebar Navigation ─────────────────────────────────────────────────
-  const NAV_ITEMS: { screen: Screen; icon: string; label: string }[] = [
-    { screen: 'main', icon: '🏠', label: 'Home' },
-    { screen: 'hangar', icon: '✈️', label: 'Garage' },
-    { screen: 'missions', icon: '🎯', label: 'Kampagne' },
-    { screen: 'maps', icon: '🗺️', label: 'Maps' },
-    { screen: 'settings', icon: '⚙️', label: 'Einstellungen' },
+  const NAV_ITEMS: {
+    screen: Screen;
+    icon: 'home' | 'hangar' | 'campaign' | 'maps' | 'settings';
+    label: string;
+  }[] = [
+    { screen: 'main', icon: 'home', label: 'Kommando' },
+    { screen: 'hangar', icon: 'hangar', label: 'Hangar' },
+    { screen: 'missions', icon: 'campaign', label: 'Kampagne' },
+    { screen: 'maps', icon: 'maps', label: 'Einsatzgebiet' },
+    { screen: 'settings', icon: 'settings', label: 'Systeme' },
   ];
 
   // ─── Hangar Atmosphere Background ──────────────────────────────────────
@@ -264,7 +256,7 @@ export function Menus({
   // ─── Credits Badge ──────────────────────────────────────────────────────
   const CreditsBadge = ({ compact = false }: { compact?: boolean }) => (
     <div
-      className={`pointer-events-auto flex items-center gap-2.5 rounded-full border border-amber-400/20 bg-black/45 backdrop-blur-2xl shadow-[0_8px_28px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.12)] ${
+      className={`ops-credits pointer-events-auto flex items-center gap-2.5 border shadow-[0_6px_20px_rgba(0,0,0,0.45)] ${
         compact ? 'px-3 py-1.5' : 'px-4 py-2'
       }`}
       title="Aero Credits"
@@ -273,28 +265,28 @@ export function Menus({
         <img
           src="./aero_credits.jpg"
           alt="Aero Credits"
-          className="h-full w-full rounded-full object-cover shadow-[0_0_12px_rgba(255,215,0,0.5),0_0_24px_rgba(255,180,0,0.2)]"
-          style={{ animation: 'coin-spin 3s linear infinite' }}
+          className="h-full w-full object-cover border border-amber-600/40"
+          style={{ animation: 'coin-spin 3s linear infinite', borderRadius: 2 }}
         />
-        <div className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-yellow-300/20 to-transparent" />
       </div>
       <div className="flex flex-col leading-tight">
-        <span className="font-display text-xs font-bold tabular-nums tracking-[0.06em] text-amber-100">
+        <span className="font-display text-xs font-bold tabular-nums tracking-[0.08em] text-amber-100">
           {aeroCredits.toLocaleString()}
         </span>
-        <span className="text-[9px] uppercase tracking-[0.15em] text-amber-300/50">Aero Credits</span>
+        <span className="text-[9px] uppercase tracking-[0.16em] text-amber-300/55">Aero Credits</span>
       </div>
     </div>
   );
 
-  // ─── Top Bar (War-Thunder style) ───────────────────────────────────────
+  // ─── Top Bar (command strip) ───────────────────────────────────────────
   const TopBar = () => (
     <div className="topbar">
-      {/* DEIN JET */}
-      <button type="button" className="topbar-chip" onClick={openHangar} title="Jet wechseln — Garage öffnen">
-        <span className="topbar-chip-icon">{jetEmoji}</span>
+      <button type="button" className="topbar-chip" onClick={openHangar} title="Jet wechseln — Hangar öffnen">
+        <span className="topbar-chip-icon">
+          <JetSilhouette jetId={selected.id} faction={selected.faction} size="sm" />
+        </span>
         <div className="min-w-0 text-left">
-          <div className="topbar-chip-label">Dein Jet</div>
+          <div className="topbar-chip-label">Airframe</div>
           <div className="topbar-chip-value truncate">{selected.name}</div>
           <div className="topbar-chip-sub truncate">
             {selected.callsign} · {selected.role}
@@ -302,11 +294,12 @@ export function Menus({
         </div>
       </button>
 
-      {/* KARTE */}
       <button type="button" className="topbar-chip" onClick={() => navigateTo('maps')} title="Map wechseln">
-        <span className="topbar-chip-icon">🗺️</span>
+        <span className="topbar-chip-icon">
+          <NavIcon name="map" />
+        </span>
         <div className="min-w-0 text-left">
-          <div className="topbar-chip-label">Karte</div>
+          <div className="topbar-chip-label">Theater</div>
           <div className="topbar-chip-value truncate">{selectedMap?.name ?? selectedMapId}</div>
           <div className="topbar-chip-sub">{mapKm} × {mapKm} km</div>
         </div>
@@ -314,13 +307,13 @@ export function Menus({
 
       <div className="topbar-spacer" />
 
-      {/* SCHNELLSTART */}
       <button type="button" className="topbar-start" onClick={startMission} title="Mission starten">
-        <span className="topbar-start-icon">⚡</span>
-        <span>ABHEBEN</span>
+        <span className="topbar-start-icon">
+          <NavIcon name="launch" />
+        </span>
+        <span>SCRAMBLE</span>
       </button>
 
-      {/* CREDITS */}
       <CreditsBadge compact />
     </div>
   );
@@ -328,12 +321,12 @@ export function Menus({
   // ─── Exit confirm (fixed full-screen so Sidebar darunter nicht blockiert) ─
   const ExitModal = () =>
     exitConfirm ? (
-      <div className="pointer-events-auto fixed inset-0 z-[100] flex items-center justify-center bg-black/55 backdrop-blur-md">
+      <div className="pointer-events-auto fixed inset-0 z-[100] flex items-center justify-center bg-black/70">
         <div className="glass-panel mx-4 w-full max-w-md p-6 text-center">
-          <div className="glass-eyebrow mb-2">System</div>
-          <h3 className="glass-title mb-2 text-2xl">Sitzung beenden?</h3>
+          <div className="glass-eyebrow mb-2">Command Link</div>
+          <h3 className="glass-title mb-2 text-2xl">Sitzung trennen?</h3>
           <p className="glass-subtitle mb-6 text-sm">
-            Du kehrst zum Hauptmenü zurück. Fortschritt in der laufenden Mission geht verloren.
+            Rückkehr zum Kommando. Fortschritt der laufenden Mission geht verloren.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
             <button
@@ -344,7 +337,7 @@ export function Menus({
               Abbrechen
             </button>
             <button type="button" className="glass-button glass-button-danger" onClick={confirmExit}>
-              Beenden
+              Trennen
             </button>
           </div>
         </div>
@@ -447,9 +440,10 @@ export function Menus({
           {CONTROLS.map((c) => (
             <div
               key={c.key}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2.5"
+              className="flex items-center justify-between gap-3 border border-[rgba(138,148,110,0.22)] bg-black/30 px-3 py-2.5"
+              style={{ borderRadius: 3 }}
             >
-              <span className="glass-mono rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-0.5 text-xs text-cyan-200">
+              <span className="glass-mono border border-[rgba(201,162,39,0.4)] bg-[rgba(201,162,39,0.1)] px-2.5 py-0.5 text-xs text-amber-200">
                 {c.key}
               </span>
               <span className="text-right text-sm text-white/70">{c.label}</span>
@@ -466,10 +460,10 @@ export function Menus({
       <div className="absolute inset-0 z-20 flex items-center justify-center">
         <div className="menu-vignette absolute inset-0" />
         <div className="glass-panel pointer-events-auto relative z-10 mx-4 w-full max-w-lg p-6 sm:p-8">
-          <div className="glass-eyebrow mb-2">Mission pausiert</div>
+          <div className="glass-eyebrow mb-2">Hold Pattern</div>
           <h2 className="glass-title mb-1 text-4xl text-white">Pause</h2>
           <p className="glass-subtitle mb-1 text-sm">
-            {selected.name} · <span className="text-cyan-300">{selected.callsign}</span>
+            {selected.name} · <span className="text-amber-300/90">{selected.callsign}</span>
           </p>
           <p className="mb-5 glass-mono text-sm text-white/50">
             Score <span className="text-white">{score}</span>
@@ -487,7 +481,7 @@ export function Menus({
                 setScreen('main');
               }}
             >
-              Zum Hauptmenü
+              Zum Kommando
             </button>
           </div>
         </div>
@@ -516,7 +510,7 @@ export function Menus({
             {win ? `Der Himmel gehört ${selected.callsign}.` : `${selected.callsign} ist abgestürzt.`}
           </p>
           <p className="mb-6 text-2xl font-bold">
-            Score <span className="glass-mono text-cyan-300">{score}</span>
+            Score <span className="glass-mono text-amber-300">{score}</span>
           </p>
           <div className="flex flex-col gap-2">
             <button
@@ -536,7 +530,7 @@ export function Menus({
                 onMenu();
               }}
             >
-              Garage öffnen
+              Hangar öffnen
             </button>
           </div>
         </div>
@@ -550,13 +544,15 @@ export function Menus({
     <div className="pointer-events-none absolute inset-0 z-30 flex">
       {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
       <aside className="glass-sidebar pointer-events-auto relative z-50 flex h-full w-[232px] shrink-0 flex-col">
-        <div className="flex items-center gap-3 border-b border-white/[0.05] px-4 py-4">
+        <div className="flex items-center gap-3 border-b border-[rgba(138,148,110,0.18)] px-4 py-4">
           <div className="glass-sidebar-logo">FJ</div>
           <div>
-            <div className="font-display text-[12px] font-bold leading-tight tracking-[0.08em] text-white">
+            <div className="font-display text-[13px] font-bold leading-tight tracking-[0.12em] text-[#f0ecd8]">
               FIGHT JET 3D
             </div>
-            <div className="text-[8px] uppercase tracking-[0.14em] text-white/25">Tactical Air Combat</div>
+            <div className="text-[8px] uppercase tracking-[0.16em] text-[rgba(201,162,39,0.55)]">
+              Steel Ops Command
+            </div>
           </div>
         </div>
 
@@ -574,14 +570,14 @@ export function Menus({
               aria-current={screen === item.screen ? 'page' : undefined}
             >
               <span className="sidebar-btn-icon" aria-hidden="true">
-                {item.icon}
+                <NavIcon name={item.icon} />
               </span>
               <span>{item.label}</span>
             </button>
           ))}
         </nav>
 
-        <div className="border-t border-white/[0.05] px-3 py-2.5">
+        <div className="border-t border-[rgba(138,148,110,0.18)] px-3 py-2.5">
           <button
             type="button"
             onClick={(e) => {
@@ -592,7 +588,7 @@ export function Menus({
             className="glass-sidebar-exit"
           >
             <span className="sidebar-btn-icon" aria-hidden="true">
-              🚪
+              <NavIcon name="exit" />
             </span>
             <span>Beenden</span>
           </button>
@@ -612,22 +608,20 @@ export function Menus({
         {screen === 'main' && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-y-auto px-4 py-8 sm:px-8">
             <div className="pointer-events-auto main-landing w-full max-w-2xl">
-              {/* Title block */}
               <div className="mb-7 text-center">
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300/80">
-                  <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#00f2ff] animate-pulse" />
+                <div className="ops-status-chip mb-3">
+                  <span className="ops-status-dot" />
                   Combat Ready
                 </div>
-                <h1 className="font-display main-title mb-2 text-5xl font-black tracking-[0.06em] sm:text-6xl md:text-7xl">
-                  <span className="text-white drop-shadow-[0_0_40px_rgba(0,242,255,0.25)]">FIGHT JET</span>{' '}
+                <h1 className="font-display main-title mb-2 text-5xl font-black tracking-[0.08em] sm:text-6xl md:text-7xl">
+                  <span className="text-[#f0ecd8] drop-shadow-[0_0_30px_rgba(201,162,39,0.2)]">FIGHT JET</span>{' '}
                   <span className="main-title-gradient">3D</span>
                 </h1>
                 <p className="text-sm uppercase tracking-[0.28em] text-white/35">
-                  Tactical Air Combat · Mouse-Aim
+                  Steel Ops · Tactical Air Combat
                 </p>
               </div>
 
-              {/* Jet + Map info cards */}
               <div className="mb-5 grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
@@ -635,22 +629,22 @@ export function Menus({
                   className="main-info-card group text-left"
                 >
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
-                      Dein Jet
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300/75">
+                      Airframe
                     </span>
-                    <span className="text-2xl transition-transform duration-300 group-hover:scale-110">
-                      {jetEmoji}
+                    <span className="transition-transform duration-300 group-hover:scale-110">
+                      <JetSilhouette jetId={selected.id} faction={selected.faction} size="sm" />
                     </span>
                   </div>
                   <div className="font-display text-lg font-bold leading-tight text-white">{selected.name}</div>
-                  <div className="mt-0.5 text-sm text-cyan-200/80">{selected.callsign}</div>
+                  <div className="mt-0.5 text-sm text-amber-200/75">{selected.callsign}</div>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-white/40">
                     <span>{selected.role}</span>
                     <span className="text-white/20">·</span>
-                    <span className="text-cyan-400/60">{FACTION_LABELS[selected.faction]}</span>
+                    <span className="text-amber-400/60">{FACTION_LABELS[selected.faction]}</span>
                   </div>
-                  <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/25 transition-colors group-hover:text-cyan-300/70">
-                    Jet wechseln →
+                  <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/25 transition-colors group-hover:text-amber-300/70">
+                    Hangar öffnen →
                   </div>
                 </button>
 
@@ -660,10 +654,12 @@ export function Menus({
                   className="main-info-card group text-left"
                 >
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
-                      Einsatzgebiet
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300/75">
+                      Theater
                     </span>
-                    <span className="text-2xl transition-transform duration-300 group-hover:scale-110">🗺️</span>
+                    <span className="text-amber-200/70 transition-transform duration-300 group-hover:scale-110">
+                      <NavIcon name="map" />
+                    </span>
                   </div>
                   <div className="font-display text-lg font-bold leading-tight text-white">
                     {selectedMap?.name ?? selectedMapId}
@@ -674,13 +670,12 @@ export function Menus({
                   <div className="mt-2 text-[11px] text-white/40">
                     {mapKm} × {mapKm} km Weltgröße
                   </div>
-                  <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/25 transition-colors group-hover:text-cyan-300/70">
-                    Karte wählen →
+                  <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/25 transition-colors group-hover:text-amber-300/70">
+                    Theater wählen →
                   </div>
                 </button>
               </div>
 
-              {/* PRIMARY CTA — Mission starten */}
               <button
                 type="button"
                 className="main-cta"
@@ -688,25 +683,28 @@ export function Menus({
               >
                 <span className="main-cta-glow" aria-hidden="true" />
                 <span className="relative z-10 flex items-center justify-center gap-3">
-                  <span className="text-xl">🚀</span>
+                  <NavIcon name="launch" />
                   <span>MISSION STARTEN</span>
-                  <span className="hidden text-white/50 sm:inline">·</span>
-                  <span className="hidden font-normal tracking-[0.12em] text-white/70 sm:inline">
+                  <span className="hidden opacity-50 sm:inline">·</span>
+                  <span className="hidden font-normal tracking-[0.12em] opacity-80 sm:inline">
                     {selected.callsign}
                   </span>
                 </span>
               </button>
 
-              {/* Quick links 2×2 / 4 col */}
               <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                {[
-                  { icon: '✈️', label: 'Garage', action: () => navigateTo('hangar') },
-                  { icon: '🗺️', label: 'Maps', action: () => navigateTo('maps') },
-                  { icon: '🎯', label: 'Kampagne', action: () => navigateTo('missions') },
-                  { icon: '⚙️', label: 'Einstellungen', action: () => navigateTo('settings') },
-                ].map(({ icon, label, action }) => (
+                {(
+                  [
+                    { icon: 'hangar' as const, label: 'Hangar', action: () => navigateTo('hangar') },
+                    { icon: 'maps' as const, label: 'Theater', action: () => navigateTo('maps') },
+                    { icon: 'campaign' as const, label: 'Kampagne', action: () => navigateTo('missions') },
+                    { icon: 'settings' as const, label: 'Systeme', action: () => navigateTo('settings') },
+                  ] as const
+                ).map(({ icon, label, action }) => (
                   <button key={label} type="button" onClick={action} className="main-quick-link">
-                    <span className="mb-1 block text-lg">{icon}</span>
+                    <span className="mb-1.5 flex justify-center text-amber-200/70">
+                      <NavIcon name={icon} />
+                    </span>
                     {label}
                   </button>
                 ))}
@@ -724,7 +722,7 @@ export function Menus({
           <div className="pointer-events-none absolute inset-0 flex items-start justify-center overflow-y-auto px-3 pb-8 pt-6 sm:items-center sm:pt-8">
             <div className="glass-panel pointer-events-auto flex max-h-[min(90vh,920px)] w-full max-w-5xl flex-col overflow-hidden p-5 sm:p-7">
               <div className="mb-1 flex shrink-0 items-center justify-between gap-3">
-                <div className="glass-eyebrow">Garage</div>
+                <div className="glass-eyebrow">Hangar Bay</div>
                 <button
                   type="button"
                   className="glass-button glass-button-ghost !px-3 !py-1.5 !text-xs"
@@ -733,9 +731,9 @@ export function Menus({
                   ← Zurück
                 </button>
               </div>
-              <h2 className="glass-title mb-1 shrink-0 text-3xl text-white">Flugzeug wählen</h2>
+              <h2 className="glass-title mb-1 shrink-0 text-3xl text-white">Airframe wählen</h2>
               <p className="glass-subtitle mb-4 shrink-0 text-sm">
-                Moderne Jets und Early Jets — jeweils eigene Physik, Waffen und Sound.
+                Fleet roster — eigene Physik, Bewaffnung und Signature pro Jet.
               </p>
 
               <div className="mb-4 flex shrink-0 flex-wrap gap-2">
@@ -743,10 +741,10 @@ export function Menus({
                   <button
                     key={f}
                     type="button"
-                    className={`glass-pill px-5 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition-all duration-300 ${
+                    className={`glass-pill px-5 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition-all duration-200 ${
                       faction === f
-                        ? 'border-white/30 bg-white/[0.14] text-white shadow-[0_0_15px_rgba(0,242,255,0.15)]'
-                        : 'bg-white/[0.04] text-white/50 hover:bg-white/[0.08] hover:text-white/75'
+                        ? 'border-[rgba(201,162,39,0.55)] bg-[rgba(201,162,39,0.14)] text-[#f0ecd8] shadow-[0_0_12px_rgba(201,162,39,0.12)]'
+                        : 'bg-black/25 text-white/50 hover:bg-white/[0.06] hover:text-white/75'
                     }`}
                     onClick={() => setFaction(f)}
                   >
@@ -796,24 +794,40 @@ export function Menus({
                           if (owned) onSelectJet(jet.id);
                         }}
                         className={`glass-card hangar-jet-card relative w-[220px] flex-shrink-0 cursor-pointer snap-start text-left sm:w-[240px] ${
-                          active ? 'is-selected ring-1 ring-cyan-400/50' : ''
-                        } ${locked ? 'opacity-70' : ''}`}
+                          active ? 'is-selected' : ''
+                        } ${locked ? 'opacity-75' : ''}`}
                       >
                         <div
-                          className={`-mx-[18px] -mt-[16px] mb-3 h-1 rounded-t-[20px] ${
+                          className={`-mx-[16px] -mt-[14px] mb-3 h-[3px] ${
                             jet.faction === 'nato'
-                              ? 'bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500'
-                              : 'bg-gradient-to-r from-red-400 via-amber-400 to-red-500'
+                              ? 'ops-faction-stripe-nato'
+                              : 'ops-faction-stripe-russia'
                           }`}
                         />
-                        <div className="mb-3 flex items-center gap-2">
-                          <span className="text-xl">{JET_EMOJI[jet.id] ?? (jet.faction === 'nato' ? '🛩️' : '✈️')}</span>
-                          <div>
-                            <div className="text-sm font-bold leading-tight text-white">{jet.name}</div>
-                            <div className="text-[10px] text-white/35">{jet.role}</div>
+
+                        <JetSilhouette
+                          jetId={jet.id}
+                          faction={jet.faction}
+                          locked={locked}
+                        />
+
+                        <div className="mb-3 flex items-start gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-display text-sm font-bold leading-tight tracking-wide text-[#f0ecd8]">
+                              {jet.name}
+                            </div>
+                            <div className="text-[10px] uppercase tracking-[0.1em] text-white/35">
+                              {jet.role}
+                            </div>
                           </div>
                           {active && (
-                            <div className="ml-auto h-2.5 w-2.5 animate-pulse rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(0,242,255,0.7)]" />
+                            <div
+                              className="mt-1 h-2 w-2 shrink-0 animate-pulse"
+                              style={{
+                                background: 'var(--accent-brass)',
+                                boxShadow: '0 0 8px rgba(201,162,39,0.7)',
+                              }}
+                            />
                           )}
                         </div>
 
@@ -830,15 +844,15 @@ export function Menus({
                                 <span className="uppercase tracking-[0.1em] text-white/40">{label}</span>
                                 <span className="font-mono text-white/50">{val}</span>
                               </div>
-                              <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.05]">
+                              <div className="h-1.5 overflow-hidden bg-black/40 border border-white/[0.06]">
                                 <div
-                                  className="h-full rounded-full transition-all duration-700 ease-out"
+                                  className="h-full transition-all duration-700 ease-out"
                                   style={{
                                     width: `${val}%`,
                                     background: locked
                                       ? 'linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.2))'
-                                      : 'linear-gradient(90deg, #00f2ff, #0a84ff)',
-                                    boxShadow: locked ? 'none' : '0 0 8px rgba(0,242,255,0.5)',
+                                      : 'linear-gradient(90deg, #6b7a35, #c9a227)',
+                                    boxShadow: locked ? 'none' : '0 0 6px rgba(201,162,39,0.35)',
                                   }}
                                 />
                               </div>
@@ -849,11 +863,12 @@ export function Menus({
                         {locked ? (
                           <button
                             type="button"
-                            className={`flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[11px] font-bold uppercase tracking-[0.06em] transition-all duration-300 ${
+                            className={`flex w-full items-center justify-center gap-2 py-2.5 text-[11px] font-bold uppercase tracking-[0.08em] transition-all duration-200 ${
                               canAfford
-                                ? 'border border-amber-400/30 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-200 hover:border-amber-300/50 hover:from-amber-500/35 hover:to-yellow-500/35 hover:shadow-[0_0_20px_rgba(255,200,0,0.2)]'
-                                : 'cursor-not-allowed border border-white/[0.06] bg-white/[0.03] text-white/25'
+                                ? 'border border-amber-500/40 bg-gradient-to-b from-amber-600/25 to-amber-900/20 text-amber-100 hover:border-amber-400/60 hover:from-amber-500/35'
+                                : 'cursor-not-allowed border border-white/[0.06] bg-black/30 text-white/25'
                             }`}
+                            style={{ borderRadius: 3 }}
                             disabled={!canAfford}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -866,19 +881,20 @@ export function Menus({
                             <img
                               src="./aero_credits.jpg"
                               alt="AC"
-                              className="h-4 w-4 rounded-full object-cover shadow-[0_0_8px_rgba(255,215,0,0.5)]"
-                              style={{ animation: 'coin-spin 4s linear infinite' }}
+                              className="h-4 w-4 object-cover border border-amber-600/40"
+                              style={{ animation: 'coin-spin 4s linear infinite', borderRadius: 2 }}
                             />
                             {jet.price.toLocaleString()} AC
                           </button>
                         ) : owned ? (
                           <button
                             type="button"
-                            className={`w-full rounded-xl py-2.5 text-[11px] font-bold uppercase tracking-[0.06em] transition-all duration-300 ${
+                            className={`w-full py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] transition-all duration-200 ${
                               active
-                                ? 'border border-cyan-400/40 bg-gradient-to-r from-cyan-500/40 to-blue-500/40 text-white shadow-[0_0_15px_rgba(0,242,255,0.2)]'
-                                : 'border border-white/[0.08] bg-white/[0.05] text-white/60 hover:border-white/15 hover:bg-white/[0.12] hover:text-white/90'
+                                ? 'border border-amber-500/50 bg-gradient-to-b from-amber-500/35 to-amber-800/30 text-[#1a1608]'
+                                : 'border border-white/[0.1] bg-black/25 text-white/60 hover:border-amber-500/30 hover:bg-white/[0.06] hover:text-white/90'
                             }`}
+                            style={{ borderRadius: 3 }}
                             onClick={(e) => {
                               e.stopPropagation();
                               onSelectJet(jet.id);
@@ -898,20 +914,22 @@ export function Menus({
                 </p>
               </div>
 
-              <div className="mb-5 grid shrink-0 gap-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4 lg:grid-cols-2">
+              <div className="ops-detail-panel mb-5 grid shrink-0 gap-5 lg:grid-cols-2">
                 <div>
                   <div className="flex flex-wrap items-baseline gap-2">
-                    <div className="text-xl font-bold text-white">{selected.name}</div>
+                    <div className="font-display text-xl font-bold tracking-wide text-[#f0ecd8]">
+                      {selected.name}
+                    </div>
                     <div
                       className="text-xs uppercase tracking-wider"
-                      style={{ color: selected.faction === 'nato' ? '#7dd3fc' : '#fca5a5' }}
+                      style={{ color: selected.faction === 'nato' ? 'var(--nato)' : 'var(--russia)' }}
                     >
                       {FACTION_LABELS[selected.faction]}
                     </div>
                   </div>
                   <p className="mt-2 text-sm text-white/65">{selected.description}</p>
-                  <p className="mt-3 text-xs text-cyan-200/90">
-                    <span className="font-semibold text-cyan-300">{selected.special.label}</span>
+                  <p className="mt-3 text-xs text-amber-100/80">
+                    <span className="font-semibold text-amber-300">{selected.special.label}</span>
                     {' — '}
                     {selected.special.detail}
                   </p>
@@ -966,17 +984,18 @@ export function Menus({
 
               <button
                 type="button"
-                className={`w-full shrink-0 rounded-2xl py-4 text-base font-bold transition-all duration-300 ${
+                className={`w-full shrink-0 py-4 text-base font-bold uppercase tracking-[0.12em] transition-all duration-200 ${
                   isJetOwned(selectedJetId)
-                    ? 'border border-cyan-400/30 bg-gradient-to-r from-cyan-500/30 to-blue-500/30 text-white backdrop-blur-xl hover:border-cyan-300/50 hover:from-cyan-500/50 hover:to-blue-500/50 hover:shadow-[0_0_30px_rgba(0,242,255,0.2)]'
-                    : 'cursor-not-allowed border border-white/[0.06] bg-white/[0.03] text-white/20'
+                    ? 'glass-button glass-button-primary'
+                    : 'cursor-not-allowed border border-white/[0.06] bg-black/30 text-white/20'
                 }`}
+                style={{ borderRadius: 3 }}
                 disabled={!isJetOwned(selectedJetId)}
                 onClick={startMission}
               >
                 {isJetOwned(selectedJetId)
-                  ? `JET ABHEBEN · ${selected.callsign}`
-                  : 'JET NICHT FREIGESCHALTET'}
+                  ? `SCRAMBLE · ${selected.callsign}`
+                  : 'AIRFRAME GESPERRT'}
               </button>
             </div>
           </div>
@@ -1002,12 +1021,12 @@ export function Menus({
               </p>
 
               {mapLoading && (
-                <div className="mb-4 rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
-                  Karte wird geladen und skaliert…
+                <div className="mb-4 border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100" style={{ borderRadius: 3 }}>
+                  Theater wird geladen und skaliert…
                 </div>
               )}
               {mapError && (
-                <div className="mb-4 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                <div className="mb-4 border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200" style={{ borderRadius: 3 }}>
                   {mapError}
                 </div>
               )}
@@ -1023,10 +1042,12 @@ export function Menus({
                       onClick={() => void pickMap(m.id)}
                       className={`glass-card text-left ${active ? 'is-selected' : ''}`}
                     >
-                      <div className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/80">
+                      <div className="text-[10px] uppercase tracking-[0.18em] text-amber-300/80">
                         {m.subtitle}
                       </div>
-                      <div className="mt-1 font-bold leading-tight text-white">{m.name}</div>
+                      <div className="mt-1 font-display font-bold leading-tight tracking-wide text-[#f0ecd8]">
+                        {m.name}
+                      </div>
                       <div className="mt-1 glass-mono text-xs text-white/45">
                         {(m.worldSizeM / 1000).toFixed(0)} km Welt
                         {m.kind === 'glb' ? ` · ~${(m.targetSpanM / 1000).toFixed(0)} km Asset` : ''}
@@ -1035,7 +1056,8 @@ export function Menus({
                         {m.tags.map((t) => (
                           <span
                             key={t}
-                            className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-cyan-100/90"
+                            className="border border-[rgba(138,148,110,0.3)] bg-black/30 px-2 py-0.5 text-[10px] text-amber-100/80"
+                            style={{ borderRadius: 2 }}
                           >
                             {t}
                           </span>
@@ -1043,7 +1065,7 @@ export function Menus({
                       </div>
                       <p className="mt-2 text-[11px] leading-snug text-white/50">{m.description}</p>
                       {active && (
-                        <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">
+                        <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300">
                           Aktiv
                         </div>
                       )}
@@ -1052,9 +1074,11 @@ export function Menus({
                 })}
               </div>
 
-              <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-4">
+              <div className="ops-detail-panel">
                 <div className="text-xs uppercase tracking-[0.16em] text-white/45">Ausgewählt</div>
-                <div className="mt-1 text-lg font-bold text-white">{selectedMap.name}</div>
+                <div className="mt-1 font-display text-lg font-bold tracking-wide text-[#f0ecd8]">
+                  {selectedMap.name}
+                </div>
                 <p className="mt-1 text-sm text-white/60">{selectedMap.description}</p>
               </div>
 
@@ -1155,7 +1179,7 @@ export function Menus({
               </div>
 
               <button type="button" className="glass-button glass-button-primary w-full py-3.5" onClick={startMission}>
-                🚀 Mission starten · {selected.callsign}
+                Mission starten · {selected.callsign}
               </button>
             </div>
           </div>

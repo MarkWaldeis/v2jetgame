@@ -157,36 +157,36 @@ export default function App() {
           className="pointer-events-none fixed inset-0 z-0"
           style={{
             background:
-              'radial-gradient(ellipse 70% 60% at 50% 35%, #0a1628 0%, #080e1a 42%, #020508 100%)',
+              'radial-gradient(ellipse 70% 60% at 50% 35%, #1a2214 0%, #0e120c 42%, #080a07 100%)',
           }}
           aria-hidden="true"
         >
           <div
-            className="absolute inset-0 opacity-[0.035]"
+            className="absolute inset-0 opacity-[0.04]"
             style={{
               backgroundImage:
-                'linear-gradient(rgba(0,242,255,0.35) 1px, transparent 1px), linear-gradient(90deg, rgba(0,242,255,0.35) 1px, transparent 1px)',
-              backgroundSize: '64px 64px',
+                'linear-gradient(rgba(201,162,39,0.35) 1px, transparent 1px), linear-gradient(90deg, rgba(201,162,39,0.35) 1px, transparent 1px)',
+              backgroundSize: '56px 56px',
             }}
           />
           <div
             className="absolute left-[12%] top-[8%] h-[50vw] w-[50vw] max-h-[720px] max-w-[720px] rounded-full opacity-[0.09]"
             style={{
-              background: 'radial-gradient(circle, #00f2ff 0%, transparent 70%)',
+              background: 'radial-gradient(circle, #c9a227 0%, transparent 70%)',
               animation: 'menuGlowPulse 6s ease-in-out infinite',
             }}
           />
           <div
-            className="absolute bottom-[15%] right-[8%] h-[42vw] w-[42vw] max-h-[640px] max-w-[640px] rounded-full opacity-[0.06]"
+            className="absolute bottom-[15%] right-[8%] h-[42vw] w-[42vw] max-h-[640px] max-w-[640px] rounded-full opacity-[0.07]"
             style={{
-              background: 'radial-gradient(circle, #fbbf24 0%, transparent 70%)',
+              background: 'radial-gradient(circle, #8fae5a 0%, transparent 70%)',
               animation: 'menuGlowPulse 7.5s ease-in-out 1.5s infinite',
             }}
           />
           <div
             className="absolute bottom-0 left-0 right-0 h-[34%]"
             style={{
-              background: 'linear-gradient(0deg, rgba(0,242,255,0.05) 0%, transparent 100%)',
+              background: 'linear-gradient(0deg, rgba(201,162,39,0.05) 0%, transparent 100%)',
             }}
           />
         </div>
@@ -199,14 +199,15 @@ export default function App() {
         }
       `}</style>
 
-      {/* Loading screen — unchanged protection against graphics glitches */}
+      {/* Loading screen — Steel Ops briefing style */}
       {isLoading && (
         <div
           className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6"
           style={{
-            background: 'radial-gradient(ellipse 70% 60% at 50% 35%, #0d1f3c 0%, #020810 100%)',
+            background: 'radial-gradient(ellipse 70% 60% at 50% 35%, #1a2214 0%, #080a07 100%)',
           }}
         >
+          <div className="ops-load-mark mb-1">Steel Ops · Arming</div>
           <svg
             width="100"
             height="100"
@@ -216,42 +217,47 @@ export default function App() {
           >
             <defs>
               <linearGradient id="loadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#0a84ff" />
-                <stop offset="100%" stopColor="#00f2ff" />
+                <stop offset="0%" stopColor="#6b7a35" />
+                <stop offset="100%" stopColor="#c9a227" />
               </linearGradient>
             </defs>
+            <rect x="8" y="8" width="84" height="84" fill="none" stroke="rgba(138,148,110,0.2)" strokeWidth="1" />
             <circle
               cx="50"
               cy="50"
-              r="42"
+              r="38"
               fill="none"
-              stroke="rgba(255,255,255,0.06)"
+              stroke="rgba(232,230,212,0.08)"
               strokeWidth="2.5"
             />
             <circle
               cx="50"
               cy="50"
-              r="42"
+              r="38"
               fill="none"
               stroke="url(#loadGrad)"
               strokeWidth="2.5"
-              strokeDasharray={`${loadingProgress * 2.64} 264`}
-              strokeLinecap="round"
+              strokeDasharray={`${loadingProgress * 2.39} 239`}
+              strokeLinecap="square"
               transform="rotate(-90 50 50)"
-              style={{ transition: 'stroke-dasharray 0.4s cubic-bezier(0.4,0,0.2,1)' }}
+              style={{ transition: 'stroke-dasharray 0.4s ease' }}
             />
+            <line x1="50" y1="18" x2="50" y2="28" stroke="#c9a227" strokeWidth="1.5" opacity="0.7" />
+            <line x1="50" y1="72" x2="50" y2="82" stroke="#c9a227" strokeWidth="1.5" opacity="0.7" />
+            <line x1="18" y1="50" x2="28" y2="50" stroke="#c9a227" strokeWidth="1.5" opacity="0.7" />
+            <line x1="72" y1="50" x2="82" y2="50" stroke="#c9a227" strokeWidth="1.5" opacity="0.7" />
           </svg>
-          <span className="text-2xl font-bold tabular-nums text-white/85">{loadingProgress}%</span>
-          <p className="animate-pulse text-xs uppercase tracking-[0.22em] text-white/50">
+          <span className="font-mono text-2xl font-bold tabular-nums" style={{ color: '#e8e6d4' }}>{loadingProgress}%</span>
+          <p className="animate-pulse text-xs uppercase tracking-[0.22em]" style={{ color: 'rgba(201,162,39,0.65)' }}>
             {loadingText}
           </p>
-          <div className="h-[3px] w-56 overflow-hidden rounded-full bg-white/[0.05]">
+          <div className="h-1 w-56 overflow-hidden border bg-black/50" style={{ borderColor: 'rgba(138,148,110,0.3)' }}>
             <div
-              className="h-full rounded-full transition-all duration-500 ease-out"
+              className="h-full transition-all duration-500 ease-out"
               style={{
                 width: `${loadingProgress}%`,
-                background: 'linear-gradient(90deg, #0a84ff, #00f2ff)',
-                boxShadow: '0 0 10px rgba(0,242,255,0.4)',
+                background: 'linear-gradient(90deg, #6b7a35, #c9a227, #e4c04a)',
+                boxShadow: '0 0 10px rgba(201,162,39,0.4)',
               }}
             />
           </div>

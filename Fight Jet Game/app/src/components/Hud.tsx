@@ -2,12 +2,12 @@ import type { HudData } from '../game/Game';
 import { CONFIG } from '../game/config';
 import { loadSettings } from '../lib/gameSettings';
 
-const CYAN = '#00F2FF';
-const AMBER = '#FF9F0A';
-const DANGER = '#FF3B30';
-const BLUE = '#0A84FF';
+const CYAN = '#9FD84A'; // phosphor green (Steel Ops)
+const AMBER = '#C9A227';
+const DANGER = '#D4453A';
+const BLUE = '#5A8AAA';
 
-// Tactical HUD — Apple Liquid Glass + War Thunder triple reticle
+// Tactical HUD — Steel Ops instrument panels + WT-style reticles
 export function Hud({ data }: { data: HudData }) {
   const showHud = loadSettings().showHud;
   const lockPct = Math.round(data.lockProgress * 100);
@@ -128,10 +128,11 @@ export function Hud({ data }: { data: HudData }) {
                 {distLabel}
               </div>
               <div
-                className="h-1.5 w-16 overflow-hidden rounded-full border"
+                className="h-1.5 w-16 overflow-hidden border"
                 style={{
-                  borderColor: m.locked ? 'rgba(255,59,48,0.7)' : 'rgba(255,255,255,0.2)',
-                  background: 'rgba(15,20,32,0.65)',
+                  borderColor: m.locked ? 'rgba(212,69,58,0.7)' : 'rgba(138,148,110,0.35)',
+                  background: 'rgba(8,12,6,0.75)',
+                  borderRadius: 1,
                 }}
               >
                 <div className="h-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
@@ -218,7 +219,7 @@ export function Hud({ data }: { data: HudData }) {
               className="hud-glass-pill"
               style={{
                 borderColor:
-                  hullPct > 50 ? 'rgba(0,242,255,0.22)' : 'rgba(255,59,48,0.45)',
+                  hullPct > 50 ? 'rgba(159,216,74,0.22)' : 'rgba(255,59,48,0.45)',
               }}
             >
               <div className="hud-label">Airframe</div>
@@ -256,13 +257,13 @@ export function Hud({ data }: { data: HudData }) {
                 MACH {(data.speedKnots / 661.7).toFixed(2)}
               </div>
               <div className="mt-3 hud-label">Fuel / THR</div>
-              <div className="mx-auto mt-1 h-20 w-2.5 overflow-hidden rounded-full border border-white/15 bg-white/10">
+              <div className="mx-auto mt-1 h-20 w-2.5 overflow-hidden border border-[rgba(159,216,74,0.3)] bg-black/40">
                 <div
-                  className="w-full rounded-full bg-gradient-to-t from-[#0A84FF] to-[#00F2FF] transition-all"
+                  className="w-full bg-gradient-to-t from-[#6b7a35] to-[#9FD84A] transition-all"
                   style={{
                     height: `${data.throttle * 100}%`,
                     marginTop: `${(1 - data.throttle) * 100}%`,
-                    boxShadow: '0 0 10px #00F2FF',
+                    boxShadow: '0 0 8px rgba(159,216,74,0.45)',
                   }}
                 />
               </div>
@@ -329,14 +330,14 @@ export function Hud({ data }: { data: HudData }) {
                     >
                       <defs>
                         <radialGradient id="radarScopeBg" cx="50%" cy="50%" r="50%">
-                          <stop offset="0%" stopColor="rgba(0,40,55,0.95)" />
-                          <stop offset="70%" stopColor="rgba(4,14,28,0.98)" />
-                          <stop offset="100%" stopColor="rgba(2,6,14,1)" />
+                          <stop offset="0%" stopColor="rgba(20,40,12,0.95)" />
+                          <stop offset="70%" stopColor="rgba(8,14,6,0.98)" />
+                          <stop offset="100%" stopColor="rgba(4,8,3,1)" />
                         </radialGradient>
                         <linearGradient id="radarSweepGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="rgba(0,242,255,0)" />
-                          <stop offset="70%" stopColor="rgba(0,242,255,0.08)" />
-                          <stop offset="100%" stopColor="rgba(0,242,255,0.35)" />
+                          <stop offset="0%" stopColor="rgba(159,216,74,0)" />
+                          <stop offset="70%" stopColor="rgba(159,216,74,0.08)" />
+                          <stop offset="100%" stopColor="rgba(159,216,74,0.35)" />
                         </linearGradient>
                         <filter id="radarGlow" x="-50%" y="-50%" width="200%" height="200%">
                           <feGaussianBlur stdDeviation="1.2" result="b" />
@@ -354,7 +355,7 @@ export function Hud({ data }: { data: HudData }) {
                         cy="0"
                         r={R}
                         fill="none"
-                        stroke="rgba(0,242,255,0.45)"
+                        stroke="rgba(159,216,74,0.45)"
                         strokeWidth="1.6"
                       />
                       <circle
@@ -362,7 +363,7 @@ export function Hud({ data }: { data: HudData }) {
                         cy="0"
                         r={R - 1.5}
                         fill="none"
-                        stroke="rgba(0,242,255,0.12)"
+                        stroke="rgba(159,216,74,0.12)"
                         strokeWidth="0.6"
                       />
 
@@ -374,15 +375,15 @@ export function Hud({ data }: { data: HudData }) {
                           cy="0"
                           r={R * f * 0.92}
                           fill="none"
-                          stroke="rgba(0,242,255,0.14)"
+                          stroke="rgba(159,216,74,0.14)"
                           strokeWidth="0.7"
                           strokeDasharray={f === 1 ? undefined : '2 3'}
                         />
                       ))}
 
                       {/* Cross + diagonal ticks */}
-                      <line x1={-R + 4} y1="0" x2={R - 4} y2="0" stroke="rgba(0,242,255,0.12)" strokeWidth="0.5" />
-                      <line x1="0" y1={-R + 4} x2="0" y2={R - 4} stroke="rgba(0,242,255,0.12)" strokeWidth="0.5" />
+                      <line x1={-R + 4} y1="0" x2={R - 4} y2="0" stroke="rgba(159,216,74,0.12)" strokeWidth="0.5" />
+                      <line x1="0" y1={-R + 4} x2="0" y2={R - 4} stroke="rgba(159,216,74,0.12)" strokeWidth="0.5" />
                       {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
                         const a = (deg * Math.PI) / 180;
                         const x1 = Math.sin(a) * (R - 8);
@@ -396,17 +397,17 @@ export function Hud({ data }: { data: HudData }) {
                             y1={y1}
                             x2={x2}
                             y2={y2}
-                            stroke="rgba(0,242,255,0.28)"
+                            stroke="rgba(159,216,74,0.28)"
                             strokeWidth="1"
                           />
                         );
                       })}
 
                       {/* Range labels (outer half) */}
-                      <text x="4" y={-R * 0.33 + 3} fill="rgba(0,242,255,0.35)" fontSize="7" fontFamily="monospace">
+                      <text x="4" y={-R * 0.33 + 3} fill="rgba(159,216,74,0.35)" fontSize="7" fontFamily="monospace">
                         {(km * 0.33).toFixed(1)}
                       </text>
-                      <text x="4" y={-R * 0.66 + 3} fill="rgba(0,242,255,0.35)" fontSize="7" fontFamily="monospace">
+                      <text x="4" y={-R * 0.66 + 3} fill="rgba(159,216,74,0.35)" fontSize="7" fontFamily="monospace">
                         {(km * 0.66).toFixed(1)}
                       </text>
 
@@ -421,7 +422,7 @@ export function Hud({ data }: { data: HudData }) {
                           y1="0"
                           x2="0"
                           y2={-R * 0.92}
-                          stroke="rgba(0,242,255,0.55)"
+                          stroke="rgba(159,216,74,0.55)"
                           strokeWidth="1.2"
                         />
                       </g>
