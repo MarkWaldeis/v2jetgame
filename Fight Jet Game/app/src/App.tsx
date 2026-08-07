@@ -4,7 +4,8 @@ import { Hud } from './components/Hud';
 import { Menus } from './components/Menus';
 import type { JetId } from './game/aircraft/JetCatalog';
 import type { MapId } from './game/world/MapCatalog';
-import { loadSettings, saveSettings, purchaseJet } from './lib/gameSettings';
+import { loadSettings, saveSettings, purchaseJet, isJetOwned } from './lib/gameSettings';
+import { disposePreviewRenderers } from './lib/previewGpu';
 
 const initialHud: HudData = {
   state: 'menu',
@@ -42,6 +43,18 @@ const initialHud: HudData = {
 
 type AppPhase = 'menu' | 'loading' | 'playing';
 
+function waitFrames(n: number): Promise<void> {
+  return new Promise((resolve) => {
+    let left = n;
+    const tick = () => {
+      left -= 1;
+      if (left <= 0) resolve();
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
@@ -50,14 +63,15 @@ export default function App() {
   const [phase, setPhase] = useState<AppPhase>('menu');
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingText, setLoadingText] = useState('Initialisiere...');
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [credits, setCredits] = useState(() => loadSettings().aeroCredits);
+  const mapIdRef = useRef<MapId>(initialHud.selectedMapId);
 
   const updatePhase = useCallback((next: AppPhase) => {
     phaseRef.current = next;
     setPhase(next);
   }, []);
 
-  // TEMP: Credits beim Start nochmal aus Settings laden (Dev-Boost greift auch bei altem localStorage)
   useEffect(() => {
     setCredits(loadSettings().aeroCredits);
   }, []);
@@ -69,11 +83,16 @@ export default function App() {
     (window as unknown as { __game: Game }).__game = game;
     game.onHud((d) => {
       setHud(d);
-      // Spiel läuft → Canvas/Phase freigeben
+      mapIdRef.current = d.selectedMapId;
+
+      // Spiel läuft → Canvas freigeben
       if (d.state === 'playing') {
-        updatePhase('playing');
+        if (phaseRef.current !== 'playing') {
+          updatePhase('playing');
+        }
         return;
       }
+
       // Mission beendet
       if ((d.state === 'gameover' || d.state === 'victory') && phaseRef.current === 'playing') {
         const reward = d.state === 'victory' ? 1000 : Math.floor(d.score * 0.5);
@@ -84,18 +103,25 @@ export default function App() {
         updatePhase('menu');
         return;
       }
-      // Menü-State vom Game: Ladescreen NICHT abbrechen!
-      // Früher: jedes HUD-Tick mit state=menu setzte phase zurück auf 'menu'
-      // und hat "Mission starten" sofort wieder zunichte gemacht.
+
+      // Pause bleibt phase=playing (Canvas sichtbar), Menü-Overlay kommt aus hud.state
+      if (d.state === 'paused') {
+        return;
+      }
+
+      // Menü-State: Ladescreen NICHT abbrechen
       if (d.state === 'menu') {
-        if (phaseRef.current !== 'loading') {
+        if (phaseRef.current !== 'loading' && phaseRef.current !== 'playing') {
           updatePhase('menu');
+        }
+        // Während playing darf ein verspäteter menu-HUD-Tick die Phase nicht killen
+        if (phaseRef.current === 'playing' && d.state === 'menu') {
+          // ignore stale menu ticks while we believe we're playing
         }
         setCredits(loadSettings().aeroCredits);
       }
     });
 
-    // Apply saved sound settings
     const s = loadSettings();
     game.setSoundMuted(s.muted);
     game.setSoundVolume(s.masterVolume);
@@ -109,30 +135,59 @@ export default function App() {
   }, []);
 
   const onStart = useCallback(async (id: JetId) => {
-    // Doppelklick / mehrfacher Start während Loading ignorieren
     if (phaseRef.current === 'loading') return;
     if (!gameRef.current) {
       console.error('Spiel-Engine nicht bereit');
+      setLoadError('Spiel-Engine nicht bereit');
+      return;
+    }
+    if (!isJetOwned(id)) {
+      setLoadError('Dieses Flugzeug ist noch nicht freigeschaltet.');
+      updatePhase('menu');
       return;
     }
 
+    setLoadError(null);
     updatePhase('loading');
     setLoadingProgress(0);
-    setLoadingText('Initialisiere...');
+    setLoadingText('Menü-3D freigeben…');
 
-    const mapId = hud.selectedMapId;
+    // 1) React unmountet Menü/JetPreview (phase=loading → Menus weg)
+    // 2) GPU-Preview-Renderer hart freigeben (WebGL-Limit)
+    // 3) 2 Frames warten, dann Assets laden
+    await waitFrames(2);
+    disposePreviewRenderers();
+    await waitFrames(2);
+
+    gameRef.current.prepareForGameplay();
+
+    const mapId = mapIdRef.current;
     try {
+      setLoadingText('Lade Mission…');
       await gameRef.current.preloadAllAssets(id, mapId, (pct, text) => {
         setLoadingProgress(pct);
         setLoadingText(text);
       });
-      // Sicherstellen, dass wir im Spiel landen (auch wenn HUD schon 'playing' gemeldet hat)
+      gameRef.current.prepareForGameplay();
+      // Doppel-Check: State wirklich playing
+      if (gameRef.current.getState() !== 'playing') {
+        throw new Error('Mission konnte nicht gestartet werden (State=' + gameRef.current.getState() + ')');
+      }
       updatePhase('playing');
+      // Noch ein Resize nach Sichtbarkeit (opacity 1)
+      await waitFrames(1);
+      gameRef.current.prepareForGameplay();
     } catch (err) {
       console.error('Fehler beim Laden:', err);
+      setLoadError(err instanceof Error ? err.message : 'Unbekannter Ladefehler');
+      try {
+        gameRef.current.returnToMenu();
+      } catch {
+        /* ignore */
+      }
       updatePhase('menu');
     }
-  }, [hud.selectedMapId, updatePhase]);
+  }, [updatePhase]);
 
   const onPurchaseJet = useCallback((jetId: string, price: number) => {
     const ok = purchaseJet(jetId, price);
@@ -142,16 +197,20 @@ export default function App() {
 
   const isMenu = phase === 'menu';
   const isLoading = phase === 'loading';
-  /** 3D-Welt im Menü und während des Ladens ausblenden (kein Grafik-Glitch, kein Hangar-3D) */
-  const hideGameCanvas = isMenu || isLoading;
+  const isPlaying = phase === 'playing';
+  /** 3D-Welt im Menü und während des Ladens ausblenden */
+  const hideGameCanvas = !isPlaying;
+
+  // Overlay-Menüs: Pause/GameOver/Victory ODER Hauptmenü — NIE während reinem Flug
+  const showMenus =
+    !isLoading &&
+    (phase === 'menu' ||
+      hud.state === 'paused' ||
+      hud.state === 'gameover' ||
+      hud.state === 'victory');
 
   return (
     <div className="liquid-ui-root relative h-screen w-screen overflow-hidden bg-black">
-      {/*
-        Menu-only deep hangar base (full viewport, including under sidebar).
-        Detailed hangar layers live inside Menus (content area).
-        Canvas stays invisible while in menu — no live 3D world behind UI.
-      */}
       {isMenu && (
         <div
           className="pointer-events-none fixed inset-0 z-0"
@@ -169,37 +228,10 @@ export default function App() {
               backgroundSize: '56px 56px',
             }}
           />
-          <div
-            className="absolute left-[12%] top-[8%] h-[50vw] w-[50vw] max-h-[720px] max-w-[720px] rounded-full opacity-[0.09]"
-            style={{
-              background: 'radial-gradient(circle, #c9a227 0%, transparent 70%)',
-              animation: 'menuGlowPulse 6s ease-in-out infinite',
-            }}
-          />
-          <div
-            className="absolute bottom-[15%] right-[8%] h-[42vw] w-[42vw] max-h-[640px] max-w-[640px] rounded-full opacity-[0.07]"
-            style={{
-              background: 'radial-gradient(circle, #8fae5a 0%, transparent 70%)',
-              animation: 'menuGlowPulse 7.5s ease-in-out 1.5s infinite',
-            }}
-          />
-          <div
-            className="absolute bottom-0 left-0 right-0 h-[34%]"
-            style={{
-              background: 'linear-gradient(0deg, rgba(201,162,39,0.05) 0%, transparent 100%)',
-            }}
-          />
         </div>
       )}
 
-      <style>{`
-        @keyframes menuGlowPulse {
-          0%, 100% { opacity: 0.05; transform: scale(1); }
-          50% { opacity: 0.11; transform: scale(1.06); }
-        }
-      `}</style>
-
-      {/* Loading screen — Steel Ops briefing style */}
+      {/* Loading screen */}
       {isLoading && (
         <div
           className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6"
@@ -242,16 +274,20 @@ export default function App() {
               transform="rotate(-90 50 50)"
               style={{ transition: 'stroke-dasharray 0.4s ease' }}
             />
-            <line x1="50" y1="18" x2="50" y2="28" stroke="#c9a227" strokeWidth="1.5" opacity="0.7" />
-            <line x1="50" y1="72" x2="50" y2="82" stroke="#c9a227" strokeWidth="1.5" opacity="0.7" />
-            <line x1="18" y1="50" x2="28" y2="50" stroke="#c9a227" strokeWidth="1.5" opacity="0.7" />
-            <line x1="72" y1="50" x2="82" y2="50" stroke="#c9a227" strokeWidth="1.5" opacity="0.7" />
           </svg>
-          <span className="font-mono text-2xl font-bold tabular-nums" style={{ color: '#e8e6d4' }}>{loadingProgress}%</span>
-          <p className="animate-pulse text-xs uppercase tracking-[0.22em]" style={{ color: 'rgba(201,162,39,0.65)' }}>
+          <span className="font-mono text-2xl font-bold tabular-nums" style={{ color: '#e8e6d4' }}>
+            {loadingProgress}%
+          </span>
+          <p
+            className="animate-pulse text-xs uppercase tracking-[0.22em]"
+            style={{ color: 'rgba(201,162,39,0.65)' }}
+          >
             {loadingText}
           </p>
-          <div className="h-1 w-56 overflow-hidden border bg-black/50" style={{ borderColor: 'rgba(138,148,110,0.3)' }}>
+          <div
+            className="h-1 w-56 overflow-hidden border bg-black/50"
+            style={{ borderColor: 'rgba(138,148,110,0.3)' }}
+          >
             <div
               className="h-full transition-all duration-500 ease-out"
               style={{
@@ -264,33 +300,77 @@ export default function App() {
         </div>
       )}
 
-      {/* Game canvas: invisible in menu/loading, fully interactive while playing */}
+      {/* Load error banner */}
+      {loadError && isMenu && (
+        <div
+          className="pointer-events-auto fixed left-1/2 top-4 z-[60] max-w-md -translate-x-1/2 border border-red-500/40 bg-black/90 px-4 py-3 text-center text-sm text-red-200"
+          style={{ borderRadius: 3 }}
+        >
+          <div className="font-semibold tracking-wide">Start fehlgeschlagen</div>
+          <div className="mt-1 text-xs text-white/60">{loadError}</div>
+          <button
+            type="button"
+            className="mt-2 text-xs uppercase tracking-wider text-amber-300 underline"
+            onClick={() => setLoadError(null)}
+          >
+            Schließen
+          </button>
+        </div>
+      )}
+
+      {/* Game canvas: nur im Spiel sichtbar & interaktiv (z-index unter HUD/Menüs) */}
       <canvas
         ref={canvasRef}
-        className={`absolute inset-0 h-full w-full transition-opacity duration-500 ${
+        className={`absolute inset-0 h-full w-full ${
           hideGameCanvas ? 'pointer-events-none opacity-0' : 'opacity-100'
         }`}
+        style={{
+          // Kein transition-opacity — verhindert „weißer Flash“ / verzögertes Einblenden
+          transition: 'none',
+          zIndex: 0,
+          background: '#0a1628',
+        }}
       />
 
-      <Hud data={hud} />
+      {isPlaying && (
+        <div className="pointer-events-none absolute inset-0 z-10">
+          <Hud data={hud} />
+        </div>
+      )}
 
-      {phase !== 'loading' && (
+      {showMenus && (
+        <div className="absolute inset-0 z-30">
         <Menus
-          state={hud.state}
+          state={
+            // Nach GameOver setzen wir phase=menu, behalten aber den echten HUD-State
+            // für Victory/Shot-Down-Screens. Reines Menü nur wenn Game auch im Menu ist.
+            hud.state === 'paused' || hud.state === 'gameover' || hud.state === 'victory'
+              ? hud.state
+              : 'menu'
+          }
           score={hud.score}
           selectedJetId={hud.selectedJetId}
           selectedMapId={hud.selectedMapId}
           onSelectJet={(id: JetId) => {
+            // Nur freigeschaltete Jets als Combat-Loadout setzen
+            if (!isJetOwned(id)) return;
             void gameRef.current?.selectJet(id);
           }}
-          onSelectMap={(id: MapId) => gameRef.current?.selectMap(id) ?? Promise.resolve()}
+          onSelectMap={(id: MapId) => {
+            mapIdRef.current = id;
+            return gameRef.current?.selectMap(id) ?? Promise.resolve();
+          }}
           onStart={onStart}
           onResume={() => gameRef.current?.togglePause()}
-          onMenu={() => gameRef.current?.returnToMenu()}
+          onMenu={() => {
+            gameRef.current?.returnToMenu();
+            updatePhase('menu');
+          }}
           onSoundChange={onSoundChange}
           aeroCredits={credits}
           onPurchaseJet={onPurchaseJet}
         />
+        </div>
       )}
     </div>
   );

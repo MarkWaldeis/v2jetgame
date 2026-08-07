@@ -1493,6 +1493,19 @@ export class Game {
     this.sound.setMasterVolume(volume);
   }
 
+  /** Nach Menü-3D: Renderer neu dimensionieren, Context prüfen */
+  prepareForGameplay() {
+    this.engine.forceResize();
+    if (this.engine.isContextLost()) {
+      console.warn('[Game] WebGL context lost vor Spielstart — Resize/Retry');
+      this.engine.forceResize();
+    }
+  }
+
+  getState() {
+    return this.state;
+  }
+
   dispose() {
     this.loop.stop();
     this.input.dispose();

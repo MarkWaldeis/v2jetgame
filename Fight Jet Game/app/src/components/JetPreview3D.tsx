@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { getJetDef, type JetId } from '../game/aircraft/JetCatalog';
 import { loadJetGlb } from '../game/aircraft/GlbJetLoader';
+import { registerPreviewRenderer, unregisterPreviewRenderer } from '../lib/previewGpu';
 
 export type PreviewMode = 'hero' | 'hangar' | 'thumb';
 
@@ -47,8 +48,10 @@ export function JetPreview3D({
       antialias: true,
       alpha: true,
       powerPreference: 'high-performance',
+      failIfMajorPerformanceCaveat: false,
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    registerPreviewRenderer(renderer);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
@@ -279,6 +282,12 @@ export function JetPreview3D({
       floorMat.dispose();
       ring.geometry.dispose();
       (ring.material as THREE.Material).dispose();
+      unregisterPreviewRenderer(renderer);
+      try {
+        renderer.forceContextLoss();
+      } catch {
+        /* ignore */
+      }
       renderer.dispose();
       if (renderer.domElement.parentElement === host) {
         host.removeChild(renderer.domElement);

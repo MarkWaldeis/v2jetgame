@@ -54,10 +54,13 @@ async function renderThumb(jetId: JetId, size: number): Promise<string> {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
+  // Kleiner Offscreen-Renderer — wird sofort disposed (kein GPU-Leak)
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
     alpha: true,
     preserveDrawingBuffer: true,
+    failIfMajorPerformanceCaveat: false,
+    powerPreference: 'low-power',
   });
   renderer.setSize(size, size, false);
   renderer.setPixelRatio(1);
@@ -92,7 +95,7 @@ async function renderThumb(jetId: JetId, size: number): Promise<string> {
   renderer.render(scene, camera);
   const url = renderer.domElement.toDataURL('image/png');
 
-  // dispose
+  // dispose — Context freigeben (wichtig vor Mission-Start)
   jet.traverse((o) => {
     const m = o as THREE.Mesh;
     if (m.isMesh) {
@@ -101,7 +104,13 @@ async function renderThumb(jetId: JetId, size: number): Promise<string> {
       mats.forEach((mat) => mat?.dispose?.());
     }
   });
+  try {
+    renderer.forceContextLoss();
+  } catch {
+    /* ignore */
+  }
   renderer.dispose();
+  renderer.domElement.remove();
 
   return url;
 }

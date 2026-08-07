@@ -91,16 +91,23 @@ export function Menus({
   const [mapError, setMapError] = useState<string | null>(null);
   const [hangarCanScrollLeft, setHangarCanScrollLeft] = useState(false);
   const [hangarCanScrollRight, setHangarCanScrollRight] = useState(false);
+  /** Hangar-Vorschau (darf gesperrt sein) — getrennt vom Combat-Loadout */
+  const [hangarFocusId, setHangarFocusId] = useState<JetId>(selectedJetId);
   /** Verhindert Reset auf 'main' wenn z.B. aus GameOver absichtlich Garage geöffnet wird */
   const preserveScreenRef = useRef(false);
   const prevStateRef = useRef<GameState>(state);
   const hangarScrollRef = useRef<HTMLDivElement>(null);
 
-  const selected = JET_CATALOG.find((j) => j.id === selectedJetId) ?? JET_CATALOG[0];
+  const combatJet = JET_CATALOG.find((j) => j.id === selectedJetId) ?? JET_CATALOG[0];
+  const focusJet =
+    JET_CATALOG.find((j) => j.id === (screen === 'hangar' ? hangarFocusId : selectedJetId)) ??
+    combatJet;
+  const selected = screen === 'hangar' ? focusJet : combatJet;
   const selectedMap = getMapDef(selectedMapId);
   const sortedJets = jetsSortedByPrice();
   const bars = jetStatBars(selected.stats);
   const mapKm = selectedMap ? (selectedMap.worldSizeM / 1000).toFixed(0) : '—';
+  const combatOwned = isJetOwned(selectedJetId);
 
   const pickMap = async (id: MapId) => {
     setMapError(null);
@@ -205,7 +212,8 @@ export function Menus({
   const navigateTo = (next: Screen) => {
     setExitConfirm(false);
     if (next === 'hangar') {
-      setFaction(selected.faction);
+      setFaction(combatJet.faction);
+      setHangarFocusId(selectedJetId);
     }
     setScreen(next);
   };
@@ -222,12 +230,29 @@ export function Menus({
     if (state !== 'menu') onMenu();
   };
 
+  /** Mission starten — immer freigeschalteten Combat-Jet, nie Hangar-Preview-Sperre */
   const startMission = () => {
-    if (!isJetOwned(selectedJetId)) {
+    let jetId = selectedJetId;
+    if (!isJetOwned(jetId)) {
+      // Falls Preview auf gesperrtem Jet: freigeschalteten Focus nutzen, sonst Hangar
+      if (isJetOwned(hangarFocusId)) {
+        jetId = hangarFocusId;
+        onSelectJet(jetId);
+      } else {
+        openHangar();
+        return;
+      }
+    }
+    // Hangar-Focus freigeschaltet? Dann als Combat setzen
+    if (screen === 'hangar' && isJetOwned(hangarFocusId)) {
+      jetId = hangarFocusId;
+      onSelectJet(jetId);
+    }
+    if (!isJetOwned(jetId)) {
       openHangar();
       return;
     }
-    onStart(selectedJetId);
+    onStart(jetId);
   };
 
   // ─── Sidebar Navigation ─────────────────────────────────────────────────
@@ -255,8 +280,8 @@ export function Menus({
       <div className="hangar-haze" />
       <div className="hangar-beams" />
       <div className="hangar-silhouette">
-        <span className="hangar-silhouette-text" key={selected.id}>
-          {selected.name}
+        <span className="hangar-silhouette-text" key={focusJet.id}>
+          {focusJet.name}
         </span>
       </div>
       <div className="hangar-particles">
@@ -298,9 +323,15 @@ export function Menus({
     <div className="topbar">
       <button
         type="button"
-        className="topbar-start topbar-start--primary"
+        className={`topbar-start topbar-start--primary ${
+          combatOwned || isJetOwned(hangarFocusId) ? '' : 'opacity-50'
+        }`}
         onClick={startMission}
-        title="Mission starten"
+        title={
+          combatOwned || isJetOwned(hangarFocusId)
+            ? 'Mission starten'
+            : 'Wähle einen freigeschalteten Jet im Hangar'
+        }
       >
         <span className="topbar-start-icon">
           <NavIcon name="launch" />
@@ -628,8 +659,8 @@ export function Menus({
           <div className="cmd-stage absolute inset-0">
             <div className="cmd-stage-3d pointer-events-auto">
               <JetPreview3D
-                key={`hero-${selectedJetId}`}
-                jetId={selectedJetId}
+                key={`hero-${combatJet.id}`}
+                jetId={combatJet.id}
                 mode="hero"
                 autoRotate
                 interactive
@@ -715,11 +746,13 @@ export function Menus({
                     }`}
                     onClick={() => {
                       setFaction(f);
-                      // Vorschau auf ersten freigeschalteten Jet der Fraktion
                       const pick =
                         sortedJets.find((j) => j.faction === f && isJetOwned(j.id)) ??
                         sortedJets.find((j) => j.faction === f);
-                      if (pick && isJetOwned(pick.id)) onSelectJet(pick.id);
+                      if (pick) {
+                        setHangarFocusId(pick.id);
+                        if (isJetOwned(pick.id)) onSelectJet(pick.id);
+                      }
                     }}
                   >
                     {FACTION_LABELS[f]}
@@ -739,8 +772,8 @@ export function Menus({
             <div className="hangar-stage-body min-h-0 flex-1">
               <div className="hangar-stage-3d pointer-events-auto">
                 <JetPreview3D
-                  key={`hangar-${selectedJetId}`}
-                  jetId={selectedJetId}
+                  key={`hangar-${hangarFocusId}`}
+                  jetId={hangarFocusId}
                   mode="hangar"
                   autoRotate
                   interactive
@@ -796,17 +829,22 @@ export function Menus({
                 <button
                   type="button"
                   className={`mt-4 w-full py-3.5 text-sm font-bold uppercase tracking-[0.12em] ${
-                    isJetOwned(selectedJetId)
+                    isJetOwned(hangarFocusId)
                       ? 'glass-button glass-button-primary'
                       : 'cursor-not-allowed border border-white/10 bg-black/40 text-white/25'
                   }`}
                   style={{ borderRadius: 3 }}
-                  disabled={!isJetOwned(selectedJetId)}
+                  disabled={!isJetOwned(hangarFocusId)}
                   onClick={startMission}
+                  title={
+                    isJetOwned(hangarFocusId)
+                      ? 'Mission starten'
+                      : 'Zuerst freischalten oder anderen Jet wählen'
+                  }
                 >
-                  {isJetOwned(selectedJetId)
+                  {isJetOwned(hangarFocusId)
                     ? `TO BATTLE · ${selected.callsign}`
-                    : 'GESPERRT'}
+                    : 'GESPERRT — FREISCHALTEN'}
                 </button>
               </aside>
             </div>
@@ -840,7 +878,7 @@ export function Menus({
                 {sortedJets
                   .filter((j) => j.faction === faction)
                   .map((jet) => {
-                    const active = jet.id === selectedJetId;
+                    const active = jet.id === hangarFocusId;
                     const owned = isJetOwned(jet.id);
                     const locked = !owned && jet.price > 0;
                     const canAfford = aeroCredits >= jet.price;
@@ -850,11 +888,15 @@ export function Menus({
                         role="button"
                         tabIndex={0}
                         onClick={() => {
-                          // Auch gesperrte Jets anschauen (kaufen separat)
-                          onSelectJet(jet.id);
+                          setHangarFocusId(jet.id);
+                          // Combat-Loadout nur bei freigeschalteten Jets
+                          if (owned) onSelectJet(jet.id);
                         }}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') onSelectJet(jet.id);
+                          if (e.key === 'Enter') {
+                            setHangarFocusId(jet.id);
+                            if (owned) onSelectJet(jet.id);
+                          }
                         }}
                         className={`wt-jet-card ${active ? 'is-selected' : ''} ${locked ? 'is-locked' : ''}`}
                       >
@@ -876,15 +918,18 @@ export function Menus({
                                 e.stopPropagation();
                                 if (!canAfford) return;
                                 const ok = onPurchaseJet(jet.id, jet.price);
-                                if (ok) onSelectJet(jet.id);
+                                if (ok) {
+                                  setHangarFocusId(jet.id);
+                                  onSelectJet(jet.id);
+                                }
                               }}
                             >
                               <img src="./aero_credits.jpg" alt="" className="h-3.5 w-3.5 object-cover" />
                               {jet.price.toLocaleString()}
                             </button>
                           ) : (
-                            <div className={`wt-jet-card-status ${active ? 'is-active' : ''}`}>
-                              {active ? 'SELECTED' : 'READY'}
+                            <div className={`wt-jet-card-status ${active && owned ? 'is-active' : ''}`}>
+                              {active && owned ? 'SELECTED' : owned ? 'READY' : 'OWNED'}
                             </div>
                           )}
                         </div>
