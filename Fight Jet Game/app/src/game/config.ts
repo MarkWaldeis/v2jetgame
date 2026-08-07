@@ -1,12 +1,9 @@
 // Zentrale Balance- und Konstanten-Datei für Fight Jet 3D.
-// War Thunder–inspiriertes Mouse-Aim / Arcade-Realistic Hybrid.
+// War Thunder–inspiriertes Mouse-Aim: realistisches Roll-to-Turn + Soft-Assist.
 //
-// ═══════════════════════════════════════════════════════════════════════════
-//  BASELINE FROZEN (User: „passt perfekt“ — 2026-08-02)
-//  flight + camera unten sind freigegebene Feel-Werte.
-//  Snapshot: ./config.baseline.json  +  ../../BASELINE_CONTROLS_CAMERA.md
-//  Nicht ohne explizite Freigabe anfassen (bes. rollYawCoupling=0, chaseOffset).
-// ═══════════════════════════════════════════════════════════════════════════
+// Flight (2026-08): realistischer Look (Bank, AoA, Climb/Dive-Energy, Wind),
+// Soft Aim-Assist auf Gegner-Lead (kein reines Gun-Follow-Mouse).
+// Camera-Baseline: ./config.baseline.json
 
 export const CONFIG = {
   world: {
@@ -17,58 +14,73 @@ export const CONFIG = {
     fogNear: 1400,
     fogFar: 34000,
   },
-  // ─── Flight feel (langsamer + freieres Zielen) ─────────────────────────
+  // ─── Flight feel (realistischer Roll-to-Turn + Energie) ────────────────
   flight: {
-    // --- Geschwindigkeiten (m/s) — alle Jets spürbar langsamer ---
-    minSpeed: 48,          // Stall-Schwelle
-    cruiseSpeed: 112,
-    maxSpeed: 200,
-    afterburnerSpeed: 245, // WEP
-    thrustAccel: 34,
-    afterburnerAccel: 55,
-    dragBase: 0.012,
-    /** Induzierter Widerstand pro G über 1 (etwas weniger Energy-Bleed) */
-    inducedDrag: 0.038,
-    /** Geschwindigkeitsverlust bei hohem AoA (zusätzlich) */
-    aoaDrag: 0.07,
+    // --- Geschwindigkeiten (m/s) ---
+    minSpeed: 52,
+    cruiseSpeed: 128,
+    maxSpeed: 235,
+    afterburnerSpeed: 290,
+    thrustAccel: 38,
+    afterburnerAccel: 62,
+    dragBase: 0.0135,
+    /** Induced Drag — spürbarer Energy-Bleed in Kurven */
+    inducedDrag: 0.048,
+    /** AoA-Drag */
+    aoaDrag: 0.085,
 
-    // --- Ruder-Raten: Pitch/Yaw stark (Zielen), Roll eher ruhig ---
-    pitchRate: 2.15,
-    rollRate: 1.85,        // weniger „Durchdrehen“
-    yawRate: 1.05,         // seitlich mit der Maus mitgehen
-    /** Roll-Winkelbeschleunigung (rad/s²) */
-    rollAccel: 8.5,
-    /** Roll-Dämpfung ohne Eingabe (1/s) — Schräglage klingt schneller ab */
-    rollDamping: 5.5,
+    // --- Ruder: realistischer (nicht „Maus = Nase instant“) ---
+    pitchRate: 1.48,
+    rollRate: 2.05,
+    yawRate: 0.55,
+    rollAccel: 9.2,
+    rollDamping: 4.4,
 
-    // --- Mouse-Aim: Nase/Kanone folgt Maus (wenig Rollen, mehr Pitch/Yaw) ---
-    fbwRollGain: 1.2,      // nur leichte Bank-Hilfe, kein Spin
-    fbwPitchGain: 4.2,     // Nase hoch/runter zum Mauspunkt
-    fbwYawGain: 1.35,      // Nase seitlich zum Mauspunkt
-    /** Kaum noch „erst rollen“ — Zielen per Nase */
-    fbwRollPriority: 0.85,
-    /** Weiche Rückkehr nach Manual-Override (1/s) */
-    fbwRecaptureRate: 6.0,
-    /** Max. Aim-Reticle-Abstand vom Bildschirmrand (NDC, 0..1) */
-    aimMargin: 0.95,
-    /** Aim-Cursor (Pointer-Lock) */
-    aimSensitivity: 0.0017,
+    // --- Mouse-Aim FBW: Roll-to-Turn (WT-Stil), nicht reines Yaw-Zielen ---
+    fbwRollGain: 3.0,
+    fbwPitchGain: 2.45,
+    fbwYawGain: 0.48,
+    /** 0 = zuerst rollen, 1 = mehr direkter Yaw — realistischer: niedrig */
+    fbwRollPriority: 0.32,
+    fbwRecaptureRate: 4.2,
+    aimMargin: 0.92,
+    aimSensitivity: 0.0014,
 
-    // --- Velocity / AoA ---
-    /** Nase folgt der Velocity etwas knackiger */
-    velocityAlignRate: 3.2,
-    /** Max. Anstellwinkel (rad) — etwas mehr Spielraum beim Ziehen */
-    maxAoa: 0.62,
-    /** Angular damping etwas weicher = freieres Steuern */
-    angularDamping: 2.9,
+    /**
+     * Soft Aim-Assist: Aim-Richtung wird leicht zum Lead des nächsten
+     * Gegners gezogen (leichter treffen, ohne Auto-Aim).
+     */
+    aimAssistConeDeg: 14,
+    aimAssistStrength: 0.38,
+    aimAssistRange: 1150,
+    aimAssistMinDot: 0.55,
 
-    // A/D nur reines Rollen — kein Heading aus Bank (Kurven = Roll + Pitch/S)
+    // --- Velocity / AoA (Nase ≠ Velocity = realistischer Look) ---
+    velocityAlignRate: 2.35,
+    maxAoa: 0.52,
+    angularDamping: 3.4,
+
+    /**
+     * Koordinierte Kurve: bei Bank + Pitch leichte Gier in die Kurve
+     * (sieht „fliegend“ aus, ohne A/D-Heading-Zwang).
+     */
+    coordTurnYaw: 0.42,
+    /** Bank erzeugt leichten Heading-Turn bei gehaltenem Pitch */
+    bankTurnRate: 0.55,
     rollYawCoupling: 0,
-    bankTurnRate: 0,
-    /** Weniger Auto-Level → Schräglage hält besser beim Zielen */
-    autoLevelRate: 0.85,
-    stallPitchDrop: 0.9,
+
+    autoLevelRate: 1.15,
+    stallPitchDrop: 0.95,
     gravityPull: 9.81,
+
+    /**
+     * Energie-Management (m/s² entlang Climb):
+     * Steigen bremst, Sinken beschleunigt — spürbar, aber fair.
+     */
+    climbBrake: 36,
+    diveAccel: 40,
+    /** Extra Gravity-Anteil auf Velocity bei Steigflug */
+    climbGravityExtra: 0.55,
   },
   player: {
     hp: 100,

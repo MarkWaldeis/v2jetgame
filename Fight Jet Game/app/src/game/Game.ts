@@ -955,7 +955,10 @@ export class Game {
     if (player.flight.stalled && player.alive) this.sound.stallWarning(true);
   }
 
-  /** Unproject Aim-NDC → Welt-Richtungsvektor für FBW */
+  private _aimAssist = new THREE.Vector3();
+  private _aimToTarget = new THREE.Vector3();
+
+  /** Unproject Aim-NDC → Welt-Richtungsvektor für FBW (+ Soft Aim-Assist) */
   private computeAimDir() {
     const cam = this.engine.camera;
     const margin = CONFIG.flight.aimMargin;
@@ -970,6 +973,79 @@ export class Game {
     // Fallback: wenn unproject degeneriert, Nase nutzen
     if (this.aimDir.lengthSq() < 0.5) {
       this.aimDir.copy(this.player.forward);
+    }
+
+    // Soft Aim-Assist: leichte Magnet-Hilfe zum Lead des nächsten Banditen
+    // (erleichtert Treffer, ohne reines Auto-Aim)
+    if (
+      this.state === 'playing' &&
+      this.player.alive &&
+      !this.input.manualOverride &&
+      !this.input.freeLookHeld
+    ) {
+      this.applySoftAimAssist();
+    }
+  }
+
+  /**
+   * Zieht aimDir leicht zum Vorhalt-Punkt des besten Ziels im Konus.
+   * Stärke nimmt zu, je näher der Cursor schon am Gegner ist.
+   */
+  private applySoftAimAssist() {
+    const F = CONFIG.flight;
+    const strengthMax = F.aimAssistStrength ?? 0;
+    if (strengthMax <= 0.01) return;
+
+    const maxRange = F.aimAssistRange ?? 1150;
+    const minDot = F.aimAssistMinDot ?? 0.55;
+    const cone = THREE.MathUtils.degToRad(F.aimAssistConeDeg ?? 14);
+    const p = this.player;
+
+    let best: EnemyJet | null = null;
+    let bestScore = -Infinity;
+
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      this._aimToTarget.copy(e.object.position).sub(p.position);
+      const dist = this._aimToTarget.length();
+      if (dist < 40 || dist > maxRange) continue;
+      this._aimToTarget.multiplyScalar(1 / dist);
+
+      const noseDot = this._aimToTarget.dot(p.forward);
+      if (noseDot < minDot) continue;
+
+      const aimDot = this._aimToTarget.dot(this.aimDir);
+      const ang = Math.acos(THREE.MathUtils.clamp(aimDot, -1, 1));
+      if (ang > cone * 1.35) continue;
+
+      // Prefer closer + more centered on reticle
+      const score = aimDot * 2.2 + noseDot * 0.6 - dist / maxRange;
+      if (score > bestScore) {
+        bestScore = score;
+        best = e;
+      }
+    }
+
+    if (!best) return;
+
+    // Lead-Punkt (leichter Vorhalt) als Assist-Ziel
+    const bulletSpeed = CONFIG.player.bulletSpeed;
+    const dist = best.object.position.distanceTo(p.position);
+    let tHit = dist / bulletSpeed;
+    const targetVel = best.flight?.velocity
+      ? best.flight.velocity.clone()
+      : new THREE.Vector3();
+    targetVel.multiplyScalar(0.75);
+    this._aimAssist.copy(best.object.position).addScaledVector(targetVel, tHit);
+    this._aimAssist.sub(p.position).normalize();
+
+    // Nähe am Reticle → mehr Assist (0..1)
+    const aimDot = THREE.MathUtils.clamp(this._aimAssist.dot(this.aimDir), 0, 1);
+    const proximity = THREE.MathUtils.smoothstep(aimDot, Math.cos(cone), 0.995);
+    const blend = strengthMax * proximity * 0.85;
+
+    if (blend > 0.02) {
+      this.aimDir.lerp(this._aimAssist, blend).normalize();
     }
   }
 
