@@ -33,10 +33,6 @@ export class PlayerJet extends Aircraft {
   private catalogMuzzles: THREE.Vector3[] = jetFxVectors(getJetDef('f16')).muzzles;
   /** Aktueller Wind (von Game gesetzt) */
   wind = new THREE.Vector3();
-  /** Airframe: Waffenblockade bei schwerem Schaden */
-  weaponsDisabled = false;
-  /** Radar-Lock-Zeit-Multiplikator (beschädigt > 1) */
-  radarLockMult = 1;
 
   constructor() {
     super('VIPER 01', { bodyColor: 0x9aa4ae, accentColor: 0xc8352e }, CONFIG.player.hp, 'us', true);
@@ -57,29 +53,8 @@ export class PlayerJet extends Aircraft {
     this.reloadTimer = 0;
     this.flight.speedMult = def.stats.speedMult;
     this.flight.turnMult = def.stats.turnMult;
-    this.weaponsDisabled = false;
-    this.radarLockMult = 1;
     this.applyFlightPhysics(def.physics, def.engineType);
     this.catalogMuzzles = jetFxVectors(def).muzzles;
-  }
-
-  /**
-   * Airframe-Zustände aus Rumpf-HP — nur HUD/Sensor/Waffen, **kein** Eingriff in
-   * Lenkung, Schub oder Wendigkeit (Fluggefühl bleibt wie zuvor).
-   */
-  applyAirframeDamageState() {
-    const hullPct = (Math.max(0, this.hp) / Math.max(1, this.maxHp)) * 100;
-    // Katalog-Flugwerte immer wiederherstellen (keine Damage-Malus-Steuerung)
-    this.flight.speedMult = this.loadout.stats.speedMult;
-    this.flight.turnMult = this.loadout.stats.turnMult;
-
-    // RADAR (nur Lock-Zeit, nicht Lenkung)
-    if (hullPct <= 40) this.radarLockMult = 1.65;
-    else if (hullPct <= 60) this.radarLockMult = 1.25;
-    else this.radarLockMult = 1;
-
-    // WEAPONS (Raketenblock bei kritischem Schaden)
-    this.weaponsDisabled = hullPct <= 15;
   }
 
   /** Mündungen: kalibrierte GLB-Anker bevorzugt, sonst Katalog. */
@@ -112,8 +87,6 @@ export class PlayerJet extends Aircraft {
     this.lockProgress = 0;
     this.flight.speedMult = s.speedMult;
     this.flight.turnMult = s.turnMult;
-    this.weaponsDisabled = false;
-    this.radarLockMult = 1;
     this.applyFlightPhysics(this.loadout.physics, this.loadout.engineType);
     this.object.position.set(0, 900, 3000);
     this.object.rotation.set(0, 0, 0);
@@ -134,7 +107,7 @@ export class PlayerJet extends Aircraft {
     return this.loadout.stats.lockRange;
   }
   get lockTime() {
-    return this.loadout.stats.lockTime * this.radarLockMult;
+    return this.loadout.stats.lockTime;
   }
   get lockAngleDeg() {
     return this.loadout.stats.lockAngleDeg;

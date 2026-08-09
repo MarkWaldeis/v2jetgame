@@ -1452,7 +1452,6 @@ export class Game {
     const player = this.player;
     const target = player.lockTarget;
     if (!target?.alive || player.missilesLeft <= 0) return;
-    if (player.weaponsDisabled) return;
 
     player.missilesLeft--;
     const hardpoints = player.getHardpoints();
@@ -1642,8 +1641,6 @@ export class Game {
       }
     }
 
-    // Airframe-Zustände: aus Rumpf-HP, mit echten Multiplikatoren am Player
-    p.applyAirframeDamageState();
     const hullPct = Math.round((Math.max(0, p.hp) / Math.max(1, p.maxHp)) * 100);
     let dmgStatus = 'NOMINAL';
     if (hullPct <= 25) dmgStatus = 'CRITICAL';

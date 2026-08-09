@@ -1,5 +1,8 @@
 // Zentrale Balance- und Konstanten-Datei für Fight Jet 3D.
-// Mouse-Aim: Nase/Kanone folgt der Maus (Gun-Follow-Mouse) — Pitch + Yaw.
+// War Thunder–inspiriertes Mouse-Aim: realistisches Roll-to-Turn + Soft-Assist.
+//
+// Flight (2026-08): realistischer Look (Bank, AoA, Climb/Dive-Energy, Wind),
+// Soft Aim-Assist auf Gegner-Lead (kein reines Gun-Follow-Mouse).
 // Camera-Baseline: ./config.baseline.json
 
 export const CONFIG = {
@@ -11,7 +14,7 @@ export const CONFIG = {
     fogNear: 1400,
     fogFar: 34000,
   },
-  // ─── Flight feel (Gun-Follow-Mouse + Energie) ──────────────────────────
+  // ─── Flight feel (realistischer Roll-to-Turn + Energie) ────────────────
   flight: {
     // --- Geschwindigkeiten (m/s) ---
     minSpeed: 52,
@@ -26,22 +29,22 @@ export const CONFIG = {
     /** AoA-Drag */
     aoaDrag: 0.085,
 
-    // --- Ruder: snappy genug, dass die Nase der Maus folgt ---
-    pitchRate: 1.55,
-    rollRate: 1.95,
-    yawRate: 1.05,         // seitlich mit der Maus mitgehen
-    rollAccel: 9.5,
-    rollDamping: 4.2,
+    // --- Ruder: realistischer (nicht „Maus = Nase instant“) ---
+    pitchRate: 1.48,
+    rollRate: 2.05,
+    yawRate: 0.55,
+    rollAccel: 9.2,
+    rollDamping: 4.4,
 
-    // --- Mouse-Aim FBW: Nase folgt Maus (wenig Rollen, stark Pitch/Yaw) ---
-    fbwRollGain: 1.2,      // nur leichte Bank-Hilfe
-    fbwPitchGain: 4.2,     // Nase hoch/runter zum Mauspunkt
-    fbwYawGain: 1.35,      // Nase seitlich zum Mauspunkt
-    /** höher = mehr direkter Yaw statt Roll-to-Turn */
-    fbwRollPriority: 0.85,
-    fbwRecaptureRate: 6.0,
-    aimMargin: 0.95,
-    aimSensitivity: 0.0017,
+    // --- Mouse-Aim FBW: Roll-to-Turn (WT-Stil), nicht reines Yaw-Zielen ---
+    fbwRollGain: 3.0,
+    fbwPitchGain: 2.45,
+    fbwYawGain: 0.48,
+    /** 0 = zuerst rollen, 1 = mehr direkter Yaw — realistischer: niedrig */
+    fbwRollPriority: 0.32,
+    fbwRecaptureRate: 4.2,
+    aimMargin: 0.92,
+    aimSensitivity: 0.0014,
 
     /**
      * Soft Aim-Assist: Aim-Richtung wird leicht zum Lead des nächsten
@@ -52,17 +55,21 @@ export const CONFIG = {
     aimAssistRange: 1150,
     aimAssistMinDot: 0.55,
 
-    // --- Velocity / AoA (Nase ≠ Velocity) ---
-    velocityAlignRate: 2.6,
+    // --- Velocity / AoA (Nase ≠ Velocity = realistischer Look) ---
+    velocityAlignRate: 2.35,
     maxAoa: 0.52,
     angularDamping: 3.4,
 
-    /** A/D = reines Rollen, kein Heading-Zwang */
-    coordTurnYaw: 0,
-    bankTurnRate: 0,
+    /**
+     * Koordinierte Kurve: bei Bank + Pitch leichte Gier in die Kurve
+     * (sieht „fliegend“ aus, ohne A/D-Heading-Zwang).
+     */
+    coordTurnYaw: 0.42,
+    /** Bank erzeugt leichten Heading-Turn bei gehaltenem Pitch */
+    bankTurnRate: 0.55,
     rollYawCoupling: 0,
 
-    autoLevelRate: 1.2,
+    autoLevelRate: 1.15,
     stallPitchDrop: 0.95,
     gravityPull: 9.81,
 
