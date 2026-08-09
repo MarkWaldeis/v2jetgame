@@ -236,14 +236,21 @@ export class FlightModel {
     }
 
     // --- Koordinierte Kurve / Bank-Turn (realistischer Look) ---
-    // Bei Schräglage und gezogenem Stick dreht die Nase in die Kurve
+    // Schräglage allein dreht die Nase (Lift-Vektor); Ziehen verstärkt die Kurve.
+    // So wirkt seitliches Fliegen geneigt statt „steif seitlich“.
     const bankForTurn = THREE.MathUtils.clamp(-this._right.y, -1, 1);
-    if (Math.abs(bankForTurn) > 0.08 && !this.stalled) {
+    if (Math.abs(bankForTurn) > 0.06 && !this.stalled) {
       const pull = Math.max(0, this.cmdPitch);
-      const bankTurn = (F.bankTurnRate ?? 0) * bankForTurn * (0.35 + pull * 1.1) * agility;
+      const base = F.bankTurnBase ?? 0.72;
+      const bankTurn =
+        (F.bankTurnRate ?? 0) * bankForTurn * (base + pull * 0.95) * agility;
       yawRate += bankTurn;
-      // leichte Gier-Hilfe in die Bank (coord)
-      yawRate += bankForTurn * Math.abs(this.cmdPitch) * (F.coordTurnYaw ?? 0) * agility * 0.55;
+      // Koordiniert: leichte Gier in die Bank
+      yawRate += bankForTurn * (0.35 + Math.abs(this.cmdPitch)) * (F.coordTurnYaw ?? 0) * agility * 0.55;
+      // Leichtes Ziehen in die Kurve (sichtbare „Load“ in der Schräglage)
+      if (Math.abs(bankForTurn) > 0.18 && Math.abs(this.cmdPitch) < 0.15) {
+        pitchRate += Math.min(0.22, Math.abs(bankForTurn) * 0.28) * agility;
+      }
     }
 
     // Stall: Nase fällt, Ruder weich, ggf. Trudeln
@@ -423,36 +430,32 @@ export class FlightModel {
       };
     }
 
-    // Gewünschte Bank aus Horizontal-Fehler (Roll-to-Turn)
-    const desiredBank = THREE.MathUtils.clamp(
-      yawErr * 1.35,
-      -0.92,
-      0.92
-    );
+    // Gewünschte Bank aus Horizontal-Fehler (stärker → sichtbareres Neigen)
+    const desiredBank = THREE.MathUtils.clamp(yawErr * 1.75, -0.95, 0.95);
     const bankErr = desiredBank - bank;
 
     // Bei großem Seitenfehler: stark rollen, wenig reiner Yaw
-    const rollFirst = 1 - THREE.MathUtils.clamp(F.fbwRollPriority ?? 0.32, 0, 1);
-    const sideWeight = THREE.MathUtils.smoothstep(yawAbs, 0.06, 0.55);
+    const rollFirst = 1 - THREE.MathUtils.clamp(F.fbwRollPriority ?? 0.22, 0, 1);
+    const sideWeight = THREE.MathUtils.smoothstep(yawAbs, 0.05, 0.5);
 
-    let rollCmd = bankErr * F.fbwRollGain * (0.55 + sideWeight * 0.7 * rollFirst);
+    let rollCmd = bankErr * F.fbwRollGain * (0.65 + sideWeight * 0.85 * rollFirst);
     rollCmd = THREE.MathUtils.clamp(rollCmd, -1, 1);
 
     // Pitch: Nase zum Ziel — bei Bank wirkt das als Kurve
     let pitchCmd = THREE.MathUtils.clamp(pitchErr * F.fbwPitchGain, -1, 1);
-    // Leichtes Ziehen in die Kurve, wenn stark gebankt und seitlicher Fehler
-    if (Math.abs(bank) > 0.2 && yawAbs > 0.05) {
-      pitchCmd += Math.sign(pitchCmd || 1) * Math.min(0.25, Math.abs(bank) * 0.22);
+    // Ziehen in die Kurve bei Schräglage (koordinierter, realistischer Look)
+    if (Math.abs(bank) > 0.15 && yawAbs > 0.04) {
+      pitchCmd += Math.min(0.38, Math.abs(bank) * 0.35 + sideWeight * 0.12);
       pitchCmd = THREE.MathUtils.clamp(pitchCmd, -1, 1);
     }
 
-    // Yaw nur Feinkorrektur (Seitenruder), nicht Hauptsteuerung
-    const yawWeight = 1 - sideWeight * 0.75 * rollFirst;
-    let yawCmd = THREE.MathUtils.clamp(-yawErr * F.fbwYawGain * yawWeight, -0.55, 0.55);
+    // Yaw nur Feinkorrektur — Hauptkurve kommt aus Bank
+    const yawWeight = 1 - sideWeight * 0.85 * rollFirst;
+    let yawCmd = THREE.MathUtils.clamp(-yawErr * F.fbwYawGain * yawWeight, -0.4, 0.4);
 
     // Fast aligned horizontal → Bank glätten
-    if (yawAbs < 0.1) {
-      rollCmd = THREE.MathUtils.clamp(rollCmd * 0.55 - bank * 0.35, -0.7, 0.7);
+    if (yawAbs < 0.08) {
+      rollCmd = THREE.MathUtils.clamp(rollCmd * 0.5 - bank * 0.4, -0.7, 0.7);
     }
 
     return { pitch: pitchCmd, roll: rollCmd, yaw: yawCmd };

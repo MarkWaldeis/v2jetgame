@@ -36,12 +36,12 @@ export const CONFIG = {
     rollAccel: 9.2,
     rollDamping: 4.4,
 
-    // --- Mouse-Aim FBW: Roll-to-Turn (WT-Stil), nicht reines Yaw-Zielen ---
-    fbwRollGain: 3.0,
+    // --- Mouse-Aim FBW: Roll-to-Turn (sichtbare Schräglage in Kurven) ---
+    fbwRollGain: 3.6,
     fbwPitchGain: 2.45,
-    fbwYawGain: 0.48,
-    /** 0 = zuerst rollen, 1 = mehr direkter Yaw — realistischer: niedrig */
-    fbwRollPriority: 0.32,
+    fbwYawGain: 0.38,
+    /** 0 = zuerst rollen, 1 = mehr direkter Yaw — niedrig = realistischer */
+    fbwRollPriority: 0.22,
     fbwRecaptureRate: 4.2,
     aimMargin: 0.92,
     aimSensitivity: 0.0014,
@@ -61,12 +61,14 @@ export const CONFIG = {
     angularDamping: 3.4,
 
     /**
-     * Koordinierte Kurve: bei Bank + Pitch leichte Gier in die Kurve
-     * (sieht „fliegend“ aus, ohne A/D-Heading-Zwang).
+     * Koordinierte Kurve: bei Schräglage dreht die Nase in die Kurve
+     * (realistisches Neigen statt „steif seitlich gieren“).
      */
-    coordTurnYaw: 0.42,
-    /** Bank erzeugt leichten Heading-Turn bei gehaltenem Pitch */
-    bankTurnRate: 0.55,
+    coordTurnYaw: 0.58,
+    /** Bank → Heading-Turn (stärker = spürbarer Kurvenflug) */
+    bankTurnRate: 0.95,
+    /** Auch ohne gezogenen Stick: Anteil Bank-Turn (0–1) */
+    bankTurnBase: 0.72,
     rollYawCoupling: 0,
 
     autoLevelRate: 1.15,

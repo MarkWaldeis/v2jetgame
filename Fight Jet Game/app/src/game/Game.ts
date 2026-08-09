@@ -1309,6 +1309,10 @@ export class Game {
     };
   }
 
+  /**
+   * Lock-On nur manuell mit **G** (nächster Gegner/Ziel im Kegel).
+   * Kein automatisches Aufschalten mehr beim Draufhalten.
+   */
   private updateLock(dt: number) {
     const player = this.player;
     // Propeller / Early Jets ohne Lenkwaffen: kein Lock-On
@@ -1319,7 +1323,8 @@ export class Game {
     }
     const lockRange = player.lockRange;
     const lockTime = player.lockTime;
-    const cone = THREE.MathUtils.degToRad(player.lockAngleDeg);
+    // Etwas großzügigerer Kegel für manuelles Aufschalten mit G
+    const cone = THREE.MathUtils.degToRad(Math.max(player.lockAngleDeg, 28));
 
     const targets: Damageable[] = [
       ...this.enemies.filter((e) => e.alive),
@@ -1327,23 +1332,44 @@ export class Game {
       ...this.aaaUnits.filter((a) => a.alive),
     ];
 
-    const valid = (t: Damageable | null): t is Damageable =>
-      !!t && t.alive &&
-      t.object.position.distanceTo(player.position) < lockRange &&
-      player.forward.angleTo(t.object.position.clone().sub(player.position).normalize()) < cone;
+    const valid = (t: Damageable | null): t is Damageable => {
+      if (!t || !t.alive) return false;
+      const to = t.object.position.clone().sub(player.position);
+      const dist = to.length();
+      if (dist < 40 || dist > lockRange) return false;
+      return player.forward.angleTo(to.normalize()) < cone;
+    };
 
+    // G = nächstes Ziel im Kegel aufschalten (nächster Abstand, Bandits zuerst)
+    if (this.input.wasPressed('KeyG')) {
+      let best: Damageable | null = null;
+      let bestScore = -Infinity;
+      for (const t of targets) {
+        if (!valid(t)) continue;
+        const dist = t.object.position.distanceTo(player.position);
+        const isBandit = this.enemies.includes(t as EnemyJet);
+        // Nähe + leichte Priorität auf Luftziele
+        const score = (isBandit ? 800 : 0) + (lockRange - dist);
+        if (score > bestScore) {
+          bestScore = score;
+          best = t;
+        }
+      }
+      if (best) {
+        // Neues Ziel oder erneut G → Progress neu starten
+        if (player.lockTarget !== best) {
+          player.lockProgress = 0;
+        }
+        player.lockTarget = best;
+      }
+    }
+
+    // Nur gehaltenes Ziel fortführen — kein Auto-Acquire
     let target = player.lockTarget;
     if (!valid(target)) {
       target = null;
-      let bestAngle = cone;
-      for (const t of targets) {
-        if (!valid(t)) continue;
-        const a = player.forward.angleTo(t.object.position.clone().sub(player.position).normalize());
-        if (a < bestAngle) { bestAngle = a; target = t; }
-      }
       player.lockProgress = 0;
     }
-
     player.lockTarget = target;
     if (target) {
       player.lockProgress = Math.min(1, player.lockProgress + dt / lockTime);
