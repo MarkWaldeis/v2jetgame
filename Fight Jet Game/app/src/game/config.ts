@@ -114,30 +114,30 @@ export const CONFIG = {
   },
   enemy: {
     count: 4,
-    hp: 60,
-    speed: 95,
-    turnRate: 0.7,
-    cannonDamage: 2,
-    fireRange: 750,
-    fireConeDeg: 8,
-    burstLength: 0.5,
-    thinkInterval: 0.25,
+    hp: 48,
+    speed: 88,
+    turnRate: 0.65,
+    /** Schwache Kanone — fair für Einsteiger */
+    cannonDamage: 1.35,
+    fireRange: 620,
+    fireConeDeg: 6.5,
+    burstLength: 0.32,
+    thinkInterval: 0.28,
     respawnDelay: 6,
-    skillEvasionChance: 0.28,
-    /** Globaler Multiplikator auf Gegner-Geschwindigkeit (Lead leichter verfolgen) */
-    speedScale: 0.48,
-    /** Luft-Luft-Raketen gegen Spieler */
-    missileRange: 2100,
-    missileConeDeg: 28,
-    /** Pause zwischen Gegner-Raketen (s) — genug Zeit für Flares */
-    missileCooldown: 14,
-    /** Min. Distanz, damit sie nicht sofort-Hits machen */
-    missileMinRange: 380,
+    skillEvasionChance: 0.22,
     /**
-     * Pro Welle: nur EIN Bandit darf Raketen schießen,
-     * und nur so viele Schüsse insgesamt.
+     * Globaler Speed-Mult (mit Floor in EnemyJet).
+     * Früher 0.48 × Wave 0.38 → Stall/Stehen; jetzt flugfähig & langsam.
      */
-    missilesPerWave: 2,
+    speedScale: 0.58,
+    /** Luft-Luft-Raketen gegen Spieler (selten, langsam) */
+    missileRange: 1700,
+    missileConeDeg: 22,
+    /** Lange Pause zwischen Gegner-Raketen */
+    missileCooldown: 18,
+    missileMinRange: 480,
+    /** Pro Welle: max. 1 Bandit, 1–2 Schüsse */
+    missilesPerWave: 1,
   },
   missile: {
     speed: 780,
