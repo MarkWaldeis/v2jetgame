@@ -11,6 +11,7 @@ import {
   loadSettings,
   saveSettings,
   isJetOwned,
+  unlockAllJets,
   jetStatBars,
   type GameSettings,
   type GraphicsQuality,
@@ -76,6 +77,7 @@ export function Menus({
   aeroCredits,
   onPurchaseJet,
   onStartCampaign,
+  onUnlockAllJets,
 }: {
   state: GameState;
   score: number;
@@ -91,6 +93,8 @@ export function Menus({
   aeroCredits: number;
   onPurchaseJet: (jetId: string, price: number) => boolean;
   onStartCampaign?: (levelId: string, jetId: JetId) => void;
+  /** Nach „Alle freischalten“ — Parent refresht Credits/UI */
+  onUnlockAllJets?: () => void;
 }) {
   const [screen, setScreen] = useState<Screen>('main');
   const [faction, setFaction] = useState<JetFaction>('nato');
@@ -117,7 +121,6 @@ export function Menus({
   const sortedJets = jetsSortedByPrice();
   const bars = jetStatBars(selected.stats);
   const mapKm = selectedMap ? (selectedMap.worldSizeM / 1000).toFixed(0) : '—';
-  const combatOwned = isJetOwned(selectedJetId);
 
   const pickMap = async (id: MapId) => {
     setMapError(null);
@@ -241,29 +244,44 @@ export function Menus({
     if (state !== 'menu') onMenu();
   };
 
-  /** Mission starten — immer freigeschalteten Combat-Jet, nie Hangar-Preview-Sperre */
-  const startMission = () => {
-    let jetId = selectedJetId;
-    if (!isJetOwned(jetId)) {
-      // Falls Preview auf gesperrtem Jet: freigeschalteten Focus nutzen, sonst Hangar
-      if (isJetOwned(hangarFocusId)) {
-        jetId = hangarFocusId;
-        onSelectJet(jetId);
-      } else {
-        openHangar();
-        return;
-      }
-    }
-    // Hangar-Focus freigeschaltet? Dann als Combat setzen
-    if (screen === 'hangar' && isJetOwned(hangarFocusId)) {
-      jetId = hangarFocusId;
-      onSelectJet(jetId);
-    }
-    if (!isJetOwned(jetId)) {
+  /**
+   * Mission starten — immer einen freigeschalteten Jet wählen.
+   * Hangar-Focus hat Vorrang, wenn freigeschaltet; sonst Combat-Jet; sonst erster Besitz.
+   */
+  const resolveStartJetId = (): JetId | null => {
+    // 1) Hangar: sichtbarer freigeschalteter Jet
+    if (isJetOwned(hangarFocusId)) return hangarFocusId;
+    // 2) Aktueller Combat-Loadout
+    if (isJetOwned(selectedJetId)) return selectedJetId;
+    // 3) Irgendein freigeschalteter Katalog-Jet (F-16/Su-25 Start)
+    const owned = JET_CATALOG.find((j) => isJetOwned(j.id));
+    return owned?.id ?? null;
+  };
+
+  const startMission = (e?: { preventDefault?: () => void; stopPropagation?: () => void }) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    const jetId = resolveStartJetId();
+    if (!jetId) {
       openHangar();
       return;
     }
+    // Combat-Loadout setzen (nur freigeschaltete IDs)
+    if (jetId !== selectedJetId) {
+      onSelectJet(jetId);
+    }
     onStart(jetId);
+  };
+
+  const handleUnlockAllJets = () => {
+    const ids = JET_CATALOG.map((j) => j.id);
+    const owned = unlockAllJets(ids);
+    setSettings((prev) => ({ ...prev, ownedJets: owned }));
+    // Ersten Jet als Combat, falls nötig
+    const pick = (JET_CATALOG.find((j) => owned.includes(j.id)) ?? JET_CATALOG[0]).id;
+    onSelectJet(pick);
+    setHangarFocusId(pick);
+    onUnlockAllJets?.();
   };
 
   // ─── Sidebar Navigation ─────────────────────────────────────────────────
@@ -330,19 +348,17 @@ export function Menus({
   );
 
   // ─── Top Bar (War Thunder: To Battle oben) ──────────────────────────────
+  const canBattle = resolveStartJetId() != null;
   const TopBar = () => (
-    <div className="topbar">
+    <div className="topbar relative z-[60]">
       <button
         type="button"
-        className={`topbar-start topbar-start--primary ${
-          combatOwned || isJetOwned(hangarFocusId) ? '' : 'opacity-50'
+        className={`topbar-start topbar-start--primary pointer-events-auto relative z-[61] ${
+          canBattle ? '' : 'opacity-50'
         }`}
-        onClick={startMission}
-        title={
-          combatOwned || isJetOwned(hangarFocusId)
-            ? 'Mission starten'
-            : 'Wähle einen freigeschalteten Jet im Hangar'
-        }
+        onClick={(ev) => startMission(ev)}
+        onPointerDown={(ev) => ev.stopPropagation()}
+        title={canBattle ? 'Mission starten' : 'Wähle einen freigeschalteten Jet im Hangar'}
       >
         <span className="topbar-start-icon">
           <NavIcon name="launch" />
@@ -375,6 +391,25 @@ export function Menus({
       )}
 
       <div className="topbar-spacer" />
+      <button
+        type="button"
+        className="topbar-chip pointer-events-auto"
+        onClick={(ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          handleUnlockAllJets();
+        }}
+        title="Alle Flugzeuge freischalten"
+      >
+        <span className="topbar-chip-icon" aria-hidden="true">
+          ✦
+        </span>
+        <div className="min-w-0 text-left">
+          <div className="topbar-chip-label">Unlock</div>
+          <div className="topbar-chip-value truncate">Alle Jets</div>
+          <div className="topbar-chip-sub truncate">Freischalten</div>
+        </div>
+      </button>
       <CreditsBadge compact />
     </div>
   );
@@ -460,6 +495,21 @@ export function Menus({
               aria-label="HUD umschalten"
               onClick={() => patchSettings({ showHud: !settings.showHud })}
             />
+          </div>
+
+          <div className="border-t border-white/10 pt-4">
+            <div className="mb-2 text-xs tracking-[0.16em] text-white/50 uppercase">Hangar</div>
+            <button
+              type="button"
+              className="glass-button glass-button-primary w-full py-3 text-sm font-bold uppercase tracking-[0.12em]"
+              onClick={handleUnlockAllJets}
+              title="Schaltet alle Katalog-Jets im Hangar frei"
+            >
+              Alle Flugzeuge freischalten
+            </button>
+            <p className="mt-2 text-xs text-white/40">
+              Ein Klick: alle Jets im Hangar freischalten (lokal gespeichert).
+            </p>
           </div>
         </div>
       )}
@@ -657,17 +707,19 @@ export function Menus({
       </aside>
 
       {/* ── MAIN COLUMN (TopBar + Content) ───────────────────────────────── */}
-      <div className="relative flex min-w-0 flex-1 flex-col">
-        <div className="pointer-events-auto relative z-40 shrink-0">
+      <div className="relative z-40 flex min-w-0 flex-1 flex-col pointer-events-auto">
+        {/* TopBar über dem 3D-Stage — Klicks dürfen nicht am Canvas hängen bleiben */}
+        <div className="pointer-events-auto relative z-[70] shrink-0 isolate">
           <TopBar />
         </div>
 
-        <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div className="relative z-0 min-h-0 flex-1 overflow-hidden">
           <HangarBackground />
 
         {/* ═══════════════ MAIN COMMAND — 3D jet hero (WT style) ═══════════════ */}
         {screen === 'main' && (
-          <div className="cmd-stage absolute inset-0">
+          <div className="cmd-stage absolute inset-0 z-0">
+            {/* 3D-Orbit nur im Stage — nicht über die TopBar legen */}
             <div className="cmd-stage-3d pointer-events-auto">
               <JetPreview3D
                 key={`hero-${combatJet.id}`}
@@ -846,7 +898,7 @@ export function Menus({
                   }`}
                   style={{ borderRadius: 3 }}
                   disabled={!isJetOwned(hangarFocusId)}
-                  onClick={startMission}
+                  onClick={(ev) => startMission(ev)}
                   title={
                     isJetOwned(hangarFocusId)
                       ? 'Mission starten'

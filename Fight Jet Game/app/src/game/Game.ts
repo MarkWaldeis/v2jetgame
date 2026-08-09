@@ -541,6 +541,7 @@ export class Game {
     // Brief pause so player sees 100%
     await new Promise(r => setTimeout(r, 300));
     this.clearLock();
+    this.input.resetAim();
     this.state = 'playing';
     this.setPlayCursor(true);
     this.emitHud();
@@ -563,6 +564,7 @@ export class Game {
     this.waveDelay = 0;
     this.spawnWave(0);
     this.cam.snapBehind(this.player.object);
+    this.input.resetAim();
     this.state = 'playing';
     this.setPlayCursor(true);
     this.emitHud();
@@ -1087,8 +1089,15 @@ export class Game {
   private computeAimDir() {
     const cam = this.engine.camera;
     const margin = CONFIG.flight.aimMargin;
-    const ax = THREE.MathUtils.clamp(this.input.aimX, -margin, margin);
-    const ay = THREE.MathUtils.clamp(this.input.aimY, -margin, margin);
+    // Totzone um die Bildschirmmitte: ruht die Maus nur leicht neben dem
+    // Zentrum, soll der Jet geradeaus fliegen — nicht langsam davonziehen.
+    const deadzone = (v: number) => {
+      const a = Math.abs(v);
+      if (a <= 0.07) return 0;
+      return (Math.sign(v) * (a - 0.07)) / 0.93;
+    };
+    const ax = deadzone(THREE.MathUtils.clamp(this.input.aimX, -margin, margin));
+    const ay = deadzone(THREE.MathUtils.clamp(this.input.aimY, -margin, margin));
 
     // Blickrichtung der Kamera, Roll entfernt
     cam.getWorldDirection(this._aimFwd);
