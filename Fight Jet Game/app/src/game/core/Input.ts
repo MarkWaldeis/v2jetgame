@@ -1,4 +1,5 @@
 // Input: Tastatur + Maus für War Thunder Mouse-Aim / Manual Override / Free-Look.
+import { CONFIG } from '../config';
 
 export class Input {
   private keys = new Set<string>();
@@ -159,10 +160,10 @@ export class Input {
 
     // Pointer-Lock: Aim mit relative Deltas
     if (this.pointerLocked && !free && !this.freeLookHeld) {
-      // CONFIG-ähnliche Sensitivität inline (Input kennt CONFIG nicht zwingend — hardcode safe)
-      const sens = 0.00135;
-      this.aimX = Math.max(-0.92, Math.min(0.92, this.aimX + this.accumMX * sens));
-      this.aimY = Math.max(-0.92, Math.min(0.92, this.aimY - this.accumMY * sens));
+      const sens = CONFIG.flight.aimSensitivity ?? 0.0017;
+      const margin = CONFIG.flight.aimMargin ?? 0.95;
+      this.aimX = Math.max(-margin, Math.min(margin, this.aimX + this.accumMX * sens));
+      this.aimY = Math.max(-margin, Math.min(margin, this.aimY - this.accumMY * sens));
     }
 
     const throttleUp = k.has('ShiftLeft') || k.has('ShiftRight');
