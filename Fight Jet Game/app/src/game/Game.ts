@@ -517,6 +517,7 @@ export class Game {
 
     // Step 5: Initialize sound & spawn enemies
     this.sound.init();
+    this.sound.setGameplayActive(true);
     const def2 = getJetDef(this.selectedJetId);
     this.sound.setEngineMode(def2.engineType);
     this.player.applyLoadout(def2);
@@ -545,6 +546,7 @@ export class Game {
     else await this.ensureJetVisual(this.selectedJetId);
 
     this.sound.init();
+    this.sound.setGameplayActive(true);
     const def = getJetDef(this.selectedJetId);
     this.sound.setEngineMode(def.engineType);
     this.player.applyLoadout(def);
@@ -566,6 +568,7 @@ export class Game {
   /** Zurück ins Hauptmenü (Hangar). */
   returnToMenu() {
     this.state = 'menu';
+    this.sound.setGameplayActive(false);
     this.clearActors();
     this.clearLock();
     this.spawnWave(0, true);
@@ -585,9 +588,11 @@ export class Game {
         if (document.pointerLockElement) document.exitPointerLock?.();
       }
       this.state = 'paused';
+      this.sound.setGameplayActive(false);
       this.setPlayCursor(false);
     } else if (this.state === 'paused') {
       this.state = 'playing';
+      this.sound.setGameplayActive(true);
       this.setPlayCursor(true);
     }
     this.emitHud();
@@ -739,6 +744,7 @@ export class Game {
     if (!forMenu) {
       this.waveBanner = wave.label;
       this.waveBannerTimer = 4;
+      this.sound.waveStart();
     }
   }
 
@@ -859,6 +865,8 @@ export class Game {
       () => {
         this.effects.explosion(player.position, true);
         this.sound.explosion(true);
+        this.sound.gameOver();
+        this.sound.setGameplayActive(false);
         this.state = 'gameover';
         this.setPlayCursor(false);
       },
@@ -969,6 +977,7 @@ export class Game {
           this.effects.damageSmoke(player.position.clone());
         }
         const killed = player.takeDamage(dmg);
+        if (!killed) this.sound.damageHit();
         if (killed) this.onPlayerKilled();
       });
       if (!aaa.alive && Math.random() < dt * 5) {
@@ -988,6 +997,7 @@ export class Game {
           const dmg = m.damage;
           const killed = victim.takeDamage(dmg);
           if (victim.isPlayer) {
+            if (!killed) this.sound.damageHit();
             if (killed) this.onPlayerKilled();
           } else if (isSam) {
             if (killed) {
@@ -996,8 +1006,11 @@ export class Game {
                 (victim as SamSite).position.clone().add(new THREE.Vector3(0, 4, 0)),
                 true
               );
+              this.sound.explosion(true);
               this.showKillPopup((victim as SamSite).name ?? 'SAM SITE', CONFIG.score.samKill, 'ground');
               if (this.player.lockTarget === victim) this.clearLock();
+            } else {
+              this.sound.hitConfirm();
             }
           } else if (isAaa) {
             if (killed) {
@@ -1006,11 +1019,16 @@ export class Game {
                 (victim as AaaTruck).position.clone().add(new THREE.Vector3(0, 2, 0)),
                 true
               );
+              this.sound.explosion(true);
               this.showKillPopup((victim as AaaTruck).name ?? 'AAA', CONFIG.score.aaaKill, 'ground');
               if (this.player.lockTarget === victim) this.clearLock();
+            } else {
+              this.sound.hitConfirm();
             }
           } else if (killed) {
             this.onEnemyKilled(victim as unknown as EnemyJet);
+          } else {
+            this.sound.hitConfirm();
           }
         }
         this.engine.scene.remove(m.object);
@@ -1126,6 +1144,8 @@ export class Game {
       const waves = this.getActiveWaves();
       if (this.waveIndex >= waves.length) {
         this.state = 'victory';
+        this.sound.setGameplayActive(false);
+        this.sound.victory();
         this.setPlayCursor(false);
         this.emitHud();
       } else {
@@ -1300,12 +1320,16 @@ export class Game {
   private onHit(victim: Damageable, dmg: number, shooter: Damageable) {
     const killed = victim.takeDamage(dmg);
     if (victim.isPlayer) {
+      if (!killed) this.sound.damageHit();
       if (killed) this.onPlayerKilled();
       return;
     }
     const isSam = this.sams.includes(victim as SamSite);
     const isAaa = this.aaaUnits.includes(victim as AaaTruck);
-    if (shooter.isPlayer) this.player.score += CONFIG.score.hitBonus;
+    if (shooter.isPlayer) {
+      this.player.score += CONFIG.score.hitBonus;
+      if (!killed) this.sound.hitConfirm();
+    }
     if (killed) {
       if (isSam) {
         this.effects.explosion((victim as SamSite).position.clone().add(new THREE.Vector3(0, 4, 0)), true);
@@ -1450,12 +1474,15 @@ export class Game {
       kind,
     };
     this.killPopupTimer = 3.2;
+    this.sound.killConfirm(kind);
     this.emitHud();
   }
 
   private onPlayerKilled() {
     this.effects.explosion(this.player.position, true);
     this.sound.explosion(true);
+    this.sound.gameOver();
+    this.sound.setGameplayActive(false);
     this.state = 'gameover';
     this.setPlayCursor(false);
     this.emitHud();
@@ -1692,6 +1719,11 @@ export class Game {
 
   setSoundVolume(volume: number) {
     this.sound.setMasterVolume(volume);
+  }
+
+  /** Engine vs. Menü-Ambient umschalten */
+  setSoundGameplayActive(active: boolean) {
+    this.sound.setGameplayActive(active);
   }
 
   /** Nach Menü-3D: Renderer neu dimensionieren, Context prüfen */

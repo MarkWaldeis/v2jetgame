@@ -26,9 +26,19 @@ import {
   isCampaignLevelUnlocked,
   isCampaignLevelCompleted,
 } from '../lib/gameSettings';
+import { gameAudio } from '../game/audio/SoundManager';
 
 type Screen = 'main' | 'hangar' | 'maps' | 'missions' | 'settings';
 type SettingsTab = 'graphics' | 'sound' | 'controls';
+
+/** UI-SFX (init auf User-Geste via AudioContext). */
+function sfx(kind: 'click' | 'hover' | 'nav' | 'confirm' | 'deny' | 'purchase' | 'start') {
+  try {
+    gameAudio.ui(kind);
+  } catch {
+    /* ignore autoplay / audio errors */
+  }
+}
 
 const CONTROLS: { key: string; label: string }[] = [
   { key: 'Maus', label: 'Mouse-Aim (Fly-By-Wire)' },
@@ -123,11 +133,13 @@ export function Menus({
   const mapKm = selectedMap ? (selectedMap.worldSizeM / 1000).toFixed(0) : '—';
 
   const pickMap = async (id: MapId) => {
+    sfx('confirm');
     setMapError(null);
     setMapLoading(true);
     try {
       await onSelectMap(id);
     } catch (e) {
+      sfx('deny');
       setMapError(e instanceof Error ? e.message : 'Map konnte nicht geladen werden');
     } finally {
       setMapLoading(false);
@@ -167,6 +179,7 @@ export function Menus({
   };
 
   const scrollHangar = (dir: -1 | 1) => {
+    sfx('click');
     const el = hangarScrollRef.current;
     if (!el) return;
     const step = Math.max(240, Math.floor(el.clientWidth * 0.7));
@@ -219,11 +232,14 @@ export function Menus({
 
   if (state === 'playing') return null;
 
-  const patchSettings = (partial: Partial<GameSettings>) =>
+  const patchSettings = (partial: Partial<GameSettings>, withClick = true) => {
+    if (withClick) sfx('click');
     setSettings((s) => ({ ...s, ...partial }));
+  };
 
   /** Zentrale Navigation — alle Sidebar/Quick-Link Buttons laufen hierüber */
   const navigateTo = (next: Screen) => {
+    sfx('nav');
     setExitConfirm(false);
     if (next === 'hangar') {
       setFaction(combatJet.faction);
@@ -235,10 +251,12 @@ export function Menus({
   const openHangar = () => navigateTo('hangar');
 
   const tryExit = () => {
+    sfx('click');
     setExitConfirm(true);
   };
 
   const confirmExit = () => {
+    sfx('confirm');
     setExitConfirm(false);
     setScreen('main');
     if (state !== 'menu') onMenu();
@@ -263,9 +281,11 @@ export function Menus({
     e?.stopPropagation?.();
     const jetId = resolveStartJetId();
     if (!jetId) {
+      sfx('deny');
       openHangar();
       return;
     }
+    sfx('start');
     // Combat-Loadout setzen (nur freigeschaltete IDs)
     if (jetId !== selectedJetId) {
       onSelectJet(jetId);
@@ -274,6 +294,7 @@ export function Menus({
   };
 
   const handleUnlockAllJets = () => {
+    sfx('purchase');
     const ids = JET_CATALOG.map((j) => j.id);
     const owned = unlockAllJets(ids);
     setSettings((prev) => ({ ...prev, ownedJets: owned }));
@@ -357,6 +378,7 @@ export function Menus({
           canBattle ? '' : 'opacity-50'
         }`}
         onClick={(ev) => startMission(ev)}
+        onMouseEnter={() => sfx('hover')}
         onPointerDown={(ev) => ev.stopPropagation()}
         title={canBattle ? 'Mission starten' : 'Wähle einen freigeschalteten Jet im Hangar'}
       >
@@ -366,7 +388,13 @@ export function Menus({
         <span>TO BATTLE</span>
       </button>
 
-      <button type="button" className="topbar-chip" onClick={() => navigateTo('maps')} title="Map wählen">
+      <button
+        type="button"
+        className="topbar-chip"
+        onClick={() => navigateTo('maps')}
+        onMouseEnter={() => sfx('hover')}
+        title="Map wählen"
+      >
         <span className="topbar-chip-icon">
           <NavIcon name="map" />
         </span>
@@ -378,7 +406,7 @@ export function Menus({
       </button>
 
       {screen !== 'main' && (
-        <button type="button" className="topbar-chip" onClick={openHangar} title="Hangar">
+        <button type="button" className="topbar-chip" onClick={openHangar} onMouseEnter={() => sfx('hover')} title="Hangar">
           <span className="topbar-chip-icon">
             <JetSilhouette jetId={selected.id} faction={selected.faction} size="sm" />
           </span>
@@ -428,11 +456,20 @@ export function Menus({
             <button
               type="button"
               className="glass-button glass-button-ghost"
-              onClick={() => setExitConfirm(false)}
+              onClick={() => {
+                sfx('click');
+                setExitConfirm(false);
+              }}
+              onMouseEnter={() => sfx('hover')}
             >
               Abbrechen
             </button>
-            <button type="button" className="glass-button glass-button-danger" onClick={confirmExit}>
+            <button
+              type="button"
+              className="glass-button glass-button-danger"
+              onClick={confirmExit}
+              onMouseEnter={() => sfx('hover')}
+            >
               Trennen
             </button>
           </div>
@@ -540,7 +577,11 @@ export function Menus({
               value={Math.round(settings.masterVolume * 100)}
               className="glass-slider"
               disabled={settings.muted}
-              onChange={(e) => patchSettings({ masterVolume: Number(e.target.value) / 100 })}
+              onChange={(e) =>
+                patchSettings({ masterVolume: Number(e.target.value) / 100 }, false)
+              }
+              onMouseUp={() => sfx('click')}
+              onTouchEnd={() => sfx('click')}
             />
           </div>
         </div>
@@ -581,16 +622,26 @@ export function Menus({
           </p>
           <SettingsBody />
           <div className="mt-6 flex flex-col gap-2">
-            <button type="button" className="glass-button glass-button-primary w-full py-3.5" onClick={onResume}>
+            <button
+              type="button"
+              className="glass-button glass-button-primary w-full py-3.5"
+              onClick={() => {
+                sfx('confirm');
+                onResume();
+              }}
+              onMouseEnter={() => sfx('hover')}
+            >
               Weiterfliegen (P)
             </button>
             <button
               type="button"
               className="glass-button glass-button-ghost w-full"
               onClick={() => {
+                sfx('nav');
                 onMenu();
                 setScreen('main');
               }}
+              onMouseEnter={() => sfx('hover')}
             >
               Zum Kommando
             </button>
@@ -635,11 +686,13 @@ export function Menus({
               type="button"
               className="glass-button glass-button-ghost w-full"
               onClick={() => {
+                sfx('nav');
                 preserveScreenRef.current = true;
                 setScreen('hangar');
                 setFaction(selected.faction);
                 onMenu();
               }}
+              onMouseEnter={() => sfx('hover')}
             >
               Hangar öffnen
             </button>
@@ -677,6 +730,7 @@ export function Menus({
                 e.stopPropagation();
                 navigateTo(item.screen);
               }}
+              onMouseEnter={() => sfx('hover')}
               className={`glass-sidebar-btn ${screen === item.screen ? 'is-active' : ''}`}
               aria-current={screen === item.screen ? 'page' : undefined}
             >
@@ -696,6 +750,7 @@ export function Menus({
               e.stopPropagation();
               tryExit();
             }}
+            onMouseEnter={() => sfx('hover')}
             className="glass-sidebar-exit"
           >
             <span className="sidebar-btn-icon" aria-hidden="true">
@@ -808,6 +863,7 @@ export function Menus({
                         : 'bg-black/30 text-white/50 hover:text-white/80'
                     }`}
                     onClick={() => {
+                      sfx('click');
                       setFaction(f);
                       const pick =
                         sortedJets.find((j) => j.faction === f && isJetOwned(j.id)) ??
@@ -951,12 +1007,15 @@ export function Menus({
                         role="button"
                         tabIndex={0}
                         onClick={() => {
+                          sfx(owned ? 'click' : 'deny');
                           setHangarFocusId(jet.id);
                           // Combat-Loadout nur bei freigeschalteten Jets
                           if (owned) onSelectJet(jet.id);
                         }}
+                        onMouseEnter={() => sfx('hover')}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
+                            sfx(owned ? 'click' : 'deny');
                             setHangarFocusId(jet.id);
                             if (owned) onSelectJet(jet.id);
                           }
@@ -979,11 +1038,17 @@ export function Menus({
                               disabled={!canAfford}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (!canAfford) return;
+                                if (!canAfford) {
+                                  sfx('deny');
+                                  return;
+                                }
                                 const ok = onPurchaseJet(jet.id, jet.price);
                                 if (ok) {
+                                  sfx('purchase');
                                   setHangarFocusId(jet.id);
                                   onSelectJet(jet.id);
+                                } else {
+                                  sfx('deny');
                                 }
                               }}
                             >
@@ -1132,13 +1197,18 @@ export function Menus({
                       key={level.id}
                       className={`mission-card ${unlocked ? 'is-playable' : 'is-locked'}`}
                       onClick={() => {
-                        if (!unlocked) return;
+                        if (!unlocked) {
+                          sfx('deny');
+                          return;
+                        }
                         if (onStartCampaign) {
+                          sfx('start');
                           onStartCampaign(level.id, selectedJetId);
                         } else {
                           startMission();
                         }
                       }}
+                      onMouseEnter={() => sfx('hover')}
                       role="button"
                       tabIndex={unlocked ? 0 : -1}
                     >

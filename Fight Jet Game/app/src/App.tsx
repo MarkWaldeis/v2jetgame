@@ -150,6 +150,9 @@ export default function App() {
     game.setSoundVolume(s.masterVolume);
     game.applySettings({ graphicsQuality: s.graphicsQuality });
 
+    // Menü: Engine stumm, leises Ambient (erst nach User-Geste über UI-SFX)
+    game.setSoundGameplayActive(false);
+
     return () => game.dispose();
   }, [updatePhase]);
 
