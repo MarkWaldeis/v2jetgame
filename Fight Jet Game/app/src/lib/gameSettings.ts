@@ -144,6 +144,18 @@ export function purchaseJet(jetId: string, price: number): boolean {
   return true;
 }
 
+/**
+ * Schaltet alle Katalog-Jets frei (Debug / Komfort).
+ * @returns Liste der freigeschalteten IDs
+ */
+export function unlockAllJets(allJetIds: string[]): string[] {
+  const s = loadSettings();
+  const set = new Set([...s.ownedJets, ...allJetIds]);
+  s.ownedJets = [...set];
+  saveSettings(s);
+  return s.ownedJets;
+}
+
 export function isCampaignLevelUnlocked(levelIndex: number): boolean {
   const s = loadSettings();
   return levelIndex <= s.campaignUnlockedMax;

@@ -864,6 +864,8 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .topbar {
+  position: relative;
+  z-index: 60;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -871,6 +873,9 @@
   background: linear-gradient(180deg, rgba(16, 18, 14, 0.96) 0%, rgba(12, 14, 11, 0.9) 100%);
   border-bottom: 1px solid rgba(138, 148, 110, 0.22);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  /* Eigene Stacking-Context — 3D-Canvas darunter darf Klicks nicht „stehlen“ */
+  isolation: isolate;
+  pointer-events: auto;
 }
 
 .topbar-chip {
@@ -946,6 +951,9 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 240, 180, 0.35);

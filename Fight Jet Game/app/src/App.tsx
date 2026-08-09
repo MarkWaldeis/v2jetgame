@@ -223,6 +223,11 @@ export default function App() {
     return ok;
   }, []);
 
+  const onUnlockAllJets = useCallback(() => {
+    // ownedJets wird in Menus geschrieben; Credits/UI hier refreshen
+    setCredits(loadSettings().aeroCredits);
+  }, []);
+
   /** Kampagnen-Mission: Level setzen, Map laden, Mission starten */
   const onStartCampaign = useCallback(
     async (levelId: string, jetId: JetId) => {
@@ -416,6 +421,7 @@ export default function App() {
           aeroCredits={credits}
           onPurchaseJet={onPurchaseJet}
           onStartCampaign={onStartCampaign}
+          onUnlockAllJets={onUnlockAllJets}
         />
         </div>
       )}
