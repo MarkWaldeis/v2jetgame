@@ -29,29 +29,29 @@ export const CONFIG = {
     /** AoA-Drag */
     aoaDrag: 0.085,
 
-    // --- Ruder: realistischer (nicht „Maus = Nase instant“) ---
+    // --- Ruder: snappy Roll, wenig flaches Yaw ---
     pitchRate: 1.48,
-    rollRate: 2.05,
-    yawRate: 0.55,
-    rollAccel: 9.2,
-    rollDamping: 4.4,
+    rollRate: 2.55,
+    yawRate: 0.42,
+    rollAccel: 14,
+    rollDamping: 4.0,
 
-    // --- Mouse-Aim FBW: Roll-to-Turn (sichtbare Schräglage in Kurven) ---
-    fbwRollGain: 3.6,
-    fbwPitchGain: 2.45,
-    fbwYawGain: 0.38,
-    /** 0 = zuerst rollen, 1 = mehr direkter Yaw — niedrig = realistischer */
-    fbwRollPriority: 0.22,
-    fbwRecaptureRate: 4.2,
+    // --- Mouse-Aim FBW: erst einrollen, dann Kurve (sichtbare Schräglage) ---
+    fbwRollGain: 4.5,
+    fbwPitchGain: 2.5,
+    fbwYawGain: 0.12,
+    /** 0 = zuerst rollen, 1 = direkter Yaw — sehr niedrig = realistisches Neigen */
+    fbwRollPriority: 0.08,
+    fbwRecaptureRate: 5.5,
     aimMargin: 0.92,
     aimSensitivity: 0.0014,
 
     /**
-     * Soft Aim-Assist: Aim-Richtung wird leicht zum Lead des nächsten
-     * Gegners gezogen (leichter treffen, ohne Auto-Aim).
+     * Soft Aim-Assist AUS (fühlt sich wie Auto-Lock an).
+     * 0 = komplett deaktiviert.
      */
     aimAssistConeDeg: 14,
-    aimAssistStrength: 0.38,
+    aimAssistStrength: 0,
     aimAssistRange: 1150,
     aimAssistMinDot: 0.55,
 
@@ -61,14 +61,13 @@ export const CONFIG = {
     angularDamping: 3.4,
 
     /**
-     * Koordinierte Kurve: bei Schräglage dreht die Nase in die Kurve
-     * (realistisches Neigen statt „steif seitlich gieren“).
+     * Koordinierte Kurve: Schräglage dreht die Nase (kein flaches Seitwärtsgieren).
      */
-    coordTurnYaw: 0.58,
-    /** Bank → Heading-Turn (stärker = spürbarer Kurvenflug) */
-    bankTurnRate: 0.95,
-    /** Auch ohne gezogenen Stick: Anteil Bank-Turn (0–1) */
-    bankTurnBase: 0.72,
+    coordTurnYaw: 0.72,
+    /** Bank → Heading-Turn */
+    bankTurnRate: 1.35,
+    /** Bank-Turn-Anteil auch ohne Ziehen */
+    bankTurnBase: 0.88,
     rollYawCoupling: 0,
 
     autoLevelRate: 1.15,
@@ -191,9 +190,10 @@ export const CONFIG = {
     /** Look-down: Blick von schräg oben auf den Jet + Ziel vor der Nase */
     lookDownAngle: 0.18,
     /** Basis-Roll-Kopplung (ruhig) — Horizont bleibt weitgehend stabil */
-    chaseRollFollow: 0.14,
-    /** Max. Roll-Kopplung bei aktivem A/D-Rollen */
-    chaseRollFollowMax: 0.42,
+    // Mehr Kamera-Mitnahme der Bank → Schräglage sichtbar
+    chaseRollFollow: 0.22,
+    /** Max. Roll-Kopplung bei aktivem Rollen / Maus-Kurven */
+    chaseRollFollowMax: 0.62,
     /** Wie schnell die Kamera-Bank der Jet-Bank folgt (1/s) */
     rollCamResponse: 6.5,
     /** Seitlicher Versatz der Kamera bei Bank (m bei 90°) — fühlt sich „mit“ dem Jet */

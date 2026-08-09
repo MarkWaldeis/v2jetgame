@@ -182,6 +182,11 @@ export class Game {
   private aimDir = new THREE.Vector3(0, 0, -1);
   private _ndc = new THREE.Vector3();
   private _proj = new THREE.Vector3();
+  /**
+   * Lock nur nach manuellem G: ohne dieses Flag kein Lock-Fortschritt,
+   * kein Ziel, kein „Auto-Lock“-Feeling.
+   */
+  private lockArmed = false;
   /** Geglättetes Lead-Fadenkreuz (Bildschirm-%) — weniger Zucken */
   private leadSmoothX = 50;
   private leadSmoothY = 50;
@@ -533,6 +538,7 @@ export class Game {
 
     // Brief pause so player sees 100%
     await new Promise(r => setTimeout(r, 300));
+    this.clearLock();
     this.state = 'playing';
     this.setPlayCursor(true);
     this.emitHud();
@@ -550,6 +556,7 @@ export class Game {
     this.player.resetMountedMissiles(this.player.missilesLeft);
     this.placePlayerForMap();
     this.clearActors();
+    this.clearLock();
     this.waveIndex = 0;
     this.waveDelay = 0;
     this.spawnWave(0);
@@ -563,6 +570,7 @@ export class Game {
   returnToMenu() {
     this.state = 'menu';
     this.clearActors();
+    this.clearLock();
     this.spawnWave(0, true);
     this.player.reset();
     this.player.resetMountedMissiles(this.player.missilesLeft);
@@ -1065,10 +1073,7 @@ export class Game {
     if (player.flight.stalled && player.alive) this.sound.stallWarning(true);
   }
 
-  private _aimAssist = new THREE.Vector3();
-  private _aimToTarget = new THREE.Vector3();
-
-  /** Unproject Aim-NDC → Welt-Richtungsvektor für FBW (+ Soft Aim-Assist) */
+  /** Unproject Aim-NDC → Welt-Richtungsvektor für FBW (kein Soft-Aim / kein Auto-Lock) */
   private computeAimDir() {
     const cam = this.engine.camera;
     const margin = CONFIG.flight.aimMargin;
@@ -1084,79 +1089,7 @@ export class Game {
     if (this.aimDir.lengthSq() < 0.5) {
       this.aimDir.copy(this.player.forward);
     }
-
-    // Soft Aim-Assist: leichte Magnet-Hilfe zum Lead des nächsten Banditen
-    // (erleichtert Treffer, ohne reines Auto-Aim)
-    if (
-      this.state === 'playing' &&
-      this.player.alive &&
-      !this.input.manualOverride &&
-      !this.input.freeLookHeld
-    ) {
-      this.applySoftAimAssist();
-    }
-  }
-
-  /**
-   * Zieht aimDir leicht zum Vorhalt-Punkt des besten Ziels im Konus.
-   * Stärke nimmt zu, je näher der Cursor schon am Gegner ist.
-   */
-  private applySoftAimAssist() {
-    const F = CONFIG.flight;
-    const strengthMax = F.aimAssistStrength ?? 0;
-    if (strengthMax <= 0.01) return;
-
-    const maxRange = F.aimAssistRange ?? 1150;
-    const minDot = F.aimAssistMinDot ?? 0.55;
-    const cone = THREE.MathUtils.degToRad(F.aimAssistConeDeg ?? 14);
-    const p = this.player;
-
-    let best: EnemyJet | null = null;
-    let bestScore = -Infinity;
-
-    for (const e of this.enemies) {
-      if (!e.alive) continue;
-      this._aimToTarget.copy(e.object.position).sub(p.position);
-      const dist = this._aimToTarget.length();
-      if (dist < 40 || dist > maxRange) continue;
-      this._aimToTarget.multiplyScalar(1 / dist);
-
-      const noseDot = this._aimToTarget.dot(p.forward);
-      if (noseDot < minDot) continue;
-
-      const aimDot = this._aimToTarget.dot(this.aimDir);
-      const ang = Math.acos(THREE.MathUtils.clamp(aimDot, -1, 1));
-      if (ang > cone * 1.35) continue;
-
-      // Prefer closer + more centered on reticle
-      const score = aimDot * 2.2 + noseDot * 0.6 - dist / maxRange;
-      if (score > bestScore) {
-        bestScore = score;
-        best = e;
-      }
-    }
-
-    if (!best) return;
-
-    // Lead-Punkt (leichter Vorhalt) als Assist-Ziel
-    const bulletSpeed = CONFIG.player.bulletSpeed;
-    const dist = best.object.position.distanceTo(p.position);
-    const tHit = dist / bulletSpeed;
-    const targetVel = best.flight?.velocity
-      ? best.flight.velocity.clone()
-      : new THREE.Vector3();
-    targetVel.multiplyScalar(0.75);
-    this._aimAssist.copy(best.object.position).addScaledVector(targetVel, tHit);
-    this._aimAssist.sub(p.position).normalize();
-
-    // Nähe am Reticle → mehr Assist (0..1)
-    const aimDot = THREE.MathUtils.clamp(this._aimAssist.dot(this.aimDir), 0, 1);
-    const proximity = THREE.MathUtils.smoothstep(aimDot, Math.cos(cone), 0.995);
-    const blend = strengthMax * proximity * 0.85;
-
-    if (blend > 0.02) {
-      this.aimDir.lerp(this._aimAssist, blend).normalize();
-    }
+    // Soft Aim-Assist absichtlich deaktiviert (aimAssistStrength = 0)
   }
 
   /** Weltpunkt → HUD % Position */
@@ -1205,6 +1138,7 @@ export class Game {
   private clearLock() {
     this.player.lockTarget = null;
     this.player.lockProgress = 0;
+    this.lockArmed = false;
   }
 
   /** Alle Damageables für Kanonen-Ballistik */
@@ -1218,44 +1152,21 @@ export class Game {
   }
 
   /**
-   * Lead-Indicator (War Thunder): Vorhalt-Punkt für fokussiertes Ziel.
-   * Geglättet + etwas „weicherer“ Vorhalt, damit man dem gelben Fadenkreuz
-   * leichter mit der Nase folgen kann.
+   * Lead-Indicator: nur bei manuell aufgeschaltetem Ziel (G),
+   * kein Auto-Fokus auf nächste Gegner.
    */
   private computeLeadIndicator(): ScreenPos | null {
     const p = this.player;
-    if (!p.alive || this.state !== 'playing') {
+    if (!p.alive || this.state !== 'playing' || !this.lockArmed) {
       this.leadSmoothActive = false;
       return null;
     }
 
     const bulletSpeed = CONFIG.player.bulletSpeed;
-    const maxRange = CONFIG.player.cannonRange;
     const maxDisplay = 1300;
 
-    let target: Damageable | null = null;
-    if (p.lockTarget?.alive) {
-      target = p.lockTarget;
-    } else {
-      let bestD = Infinity;
-      const candidates: Damageable[] = [
-        ...this.enemies.filter((e) => e.alive),
-        ...this.sams.filter((s) => s.alive),
-        ...this.aaaUnits.filter((a) => a.alive),
-      ];
-      for (const t of candidates) {
-        const to = t.object.position.clone().sub(p.position);
-        const d = to.length();
-        if (d > maxRange || d > maxDisplay || d < 20) continue;
-        to.multiplyScalar(1 / d);
-        // Etwas großzügigerer Konus → Lead bleibt länger sichtbar
-        if (to.dot(p.forward) < 0.05) continue;
-        if (d < bestD) {
-          bestD = d;
-          target = t;
-        }
-      }
-    }
+    const target: Damageable | null =
+      p.lockTarget?.alive ? p.lockTarget : null;
     if (!target?.alive) {
       this.leadSmoothActive = false;
       return null;
@@ -1310,21 +1221,25 @@ export class Game {
   }
 
   /**
-   * Lock-On nur manuell mit **G** (nächster Gegner/Ziel im Kegel).
-   * Kein automatisches Aufschalten mehr beim Draufhalten.
+   * Lock-On **ausschließlich** mit Taste G.
+   * Ohne G: kein Ziel, kein Progress, kein HUD-Locking.
+   * G: nächstes Ziel im Kegel (Bandits bevorzugt) aufschalten und halten.
    */
   private updateLock(dt: number) {
     const player = this.player;
-    // Propeller / Early Jets ohne Lenkwaffen: kein Lock-On
+
+    // Propeller / Early Jets ohne Lenkwaffen
     if (!player.hasMissiles) {
-      player.lockTarget = null;
-      player.lockProgress = 0;
+      this.clearLock();
       return;
     }
+
     const lockRange = player.lockRange;
-    const lockTime = player.lockTime;
-    // Etwas großzügigerer Kegel für manuelles Aufschalten mit G
-    const cone = THREE.MathUtils.degToRad(Math.max(player.lockAngleDeg, 28));
+    const lockTime = Math.max(0.35, player.lockTime);
+    // Großzügiger Kegel nur für manuelles G-Aufschalten
+    const acquireCone = THREE.MathUtils.degToRad(Math.max(player.lockAngleDeg * 1.6, 32));
+    // Engerer Kegel zum Halten des Locks
+    const holdCone = THREE.MathUtils.degToRad(Math.max(player.lockAngleDeg * 1.35, 26));
 
     const targets: Damageable[] = [
       ...this.enemies.filter((e) => e.alive),
@@ -1332,50 +1247,54 @@ export class Game {
       ...this.aaaUnits.filter((a) => a.alive),
     ];
 
-    const valid = (t: Damageable | null): t is Damageable => {
-      if (!t || !t.alive) return false;
+    const inCone = (t: Damageable, cone: number): boolean => {
+      if (!t.alive) return false;
       const to = t.object.position.clone().sub(player.position);
       const dist = to.length();
       if (dist < 40 || dist > lockRange) return false;
       return player.forward.angleTo(to.normalize()) < cone;
     };
 
-    // G = nächstes Ziel im Kegel aufschalten (nächster Abstand, Bandits zuerst)
+    // ── G: manuell nächstes Ziel aufschalten ──
     if (this.input.wasPressed('KeyG')) {
       let best: Damageable | null = null;
       let bestScore = -Infinity;
       for (const t of targets) {
-        if (!valid(t)) continue;
+        if (!inCone(t, acquireCone)) continue;
         const dist = t.object.position.distanceTo(player.position);
-        const isBandit = this.enemies.includes(t as EnemyJet);
-        // Nähe + leichte Priorität auf Luftziele
-        const score = (isBandit ? 800 : 0) + (lockRange - dist);
+        const isBandit = this.enemies.some((e) => e === t);
+        const score = (isBandit ? 2000 : 0) + (lockRange - dist);
         if (score > bestScore) {
           bestScore = score;
           best = t;
         }
       }
       if (best) {
-        // Neues Ziel oder erneut G → Progress neu starten
-        if (player.lockTarget !== best) {
-          player.lockProgress = 0;
-        }
+        this.lockArmed = true;
         player.lockTarget = best;
+        player.lockProgress = 0.05; // sofort sichtbarer Start
+      } else {
+        // G ohne Ziel → Lock abbrechen
+        this.clearLock();
       }
     }
 
-    // Nur gehaltenes Ziel fortführen — kein Auto-Acquire
-    let target = player.lockTarget;
-    if (!valid(target)) {
-      target = null;
+    // ── Ohne manuelles Armed: nie locken ──
+    if (!this.lockArmed) {
+      player.lockTarget = null;
       player.lockProgress = 0;
+      return;
     }
+
+    // ── Nur gehaltenes Ziel fortführen — KEIN Auto-Acquire ──
+    const target = player.lockTarget;
+    if (!target || !inCone(target, holdCone)) {
+      this.clearLock();
+      return;
+    }
+
     player.lockTarget = target;
-    if (target) {
-      player.lockProgress = Math.min(1, player.lockProgress + dt / lockTime);
-    } else {
-      player.lockProgress = 0;
-    }
+    player.lockProgress = Math.min(1, player.lockProgress + dt / lockTime);
   }
 
   private onHit(victim: Damageable, dmg: number, shooter: Damageable) {
