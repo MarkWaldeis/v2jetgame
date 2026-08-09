@@ -64,31 +64,21 @@ export class PlayerJet extends Aircraft {
   }
 
   /**
-   * Airframe-Zustände aus Rumpf-HP — ehrliches Panel, aber mit Spielwirkung:
-   * ENGINE → Schub, FLIGHT CTRL → Wendigkeit, RADAR → Lock-Zeit, WEAPONS → keine Raketen.
-   * (Keine echten Trefferzonen; Zustand folgt dem globalen Airframe-HP.)
+   * Airframe-Zustände aus Rumpf-HP — nur HUD/Sensor/Waffen, **kein** Eingriff in
+   * Lenkung, Schub oder Wendigkeit (Fluggefühl bleibt wie zuvor).
    */
   applyAirframeDamageState() {
     const hullPct = (Math.max(0, this.hp) / Math.max(1, this.maxHp)) * 100;
-    const baseSpeed = this.loadout.stats.speedMult;
-    const baseTurn = this.loadout.stats.turnMult;
+    // Katalog-Flugwerte immer wiederherstellen (keine Damage-Malus-Steuerung)
+    this.flight.speedMult = this.loadout.stats.speedMult;
+    this.flight.turnMult = this.loadout.stats.turnMult;
 
-    // ENGINE
-    if (hullPct <= 20) this.flight.speedMult = baseSpeed * 0.55;
-    else if (hullPct <= 50) this.flight.speedMult = baseSpeed * 0.8;
-    else this.flight.speedMult = baseSpeed;
-
-    // FLIGHT CTRL / HYDRAULICS
-    if (hullPct <= 35) this.flight.turnMult = baseTurn * 0.55;
-    else if (hullPct <= 50) this.flight.turnMult = baseTurn * 0.75;
-    else this.flight.turnMult = baseTurn;
-
-    // RADAR
+    // RADAR (nur Lock-Zeit, nicht Lenkung)
     if (hullPct <= 40) this.radarLockMult = 1.65;
     else if (hullPct <= 60) this.radarLockMult = 1.25;
     else this.radarLockMult = 1;
 
-    // WEAPONS
+    // WEAPONS (Raketenblock bei kritischem Schaden)
     this.weaponsDisabled = hullPct <= 15;
   }
 
