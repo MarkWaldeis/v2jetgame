@@ -249,8 +249,10 @@ export class FlightModel {
       // Koordiniert: leichte Gier in die Bank
       yawRate += bankForTurn * (0.35 + Math.abs(this.cmdPitch)) * (F.coordTurnYaw ?? 0) * agility * 0.55;
       // Leichtes Ziehen in die Kurve (sichtbare „Load“ in der Schräglage)
+      // — stark reduziert, damit der Jet in gehaltener Schräglage nicht
+      // dauerhaft nach oben zieht.
       if (Math.abs(bankForTurn) > 0.18 && Math.abs(this.cmdPitch) < 0.15) {
-        pitchRate += Math.min(0.22, Math.abs(bankForTurn) * 0.28) * agility;
+        pitchRate += Math.min(0.09, Math.abs(bankForTurn) * 0.11) * agility;
       }
     }
 
@@ -444,12 +446,10 @@ export class FlightModel {
     rollCmd += THREE.MathUtils.clamp(yawErr * 1.1 * sideWeight, -0.85, 0.85);
     rollCmd = THREE.MathUtils.clamp(rollCmd, -1, 1);
 
-    // Pitch: Nase zum Ziel + Ziehen in die Kurve bei Bank
-    let pitchCmd = THREE.MathUtils.clamp(pitchErr * F.fbwPitchGain, -1, 1);
-    if (Math.abs(bank) > 0.12 && yawAbs > 0.03) {
-      pitchCmd += Math.min(0.48, Math.abs(bank) * 0.42 + sideWeight * 0.18);
-      pitchCmd = THREE.MathUtils.clamp(pitchCmd, -1, 1);
-    }
+    // Pitch: Nase zum Ziel. KEIN pauschales Hochziehen bei Schräglage —
+    // die Kurve entsteht über bankTurnRate (Yaw), ein konstanter Pitch-Bias
+    // hat den Jet sonst beim Seitwärts-Zielen dauerhaft nach oben gezogen.
+    const pitchCmd = THREE.MathUtils.clamp(pitchErr * F.fbwPitchGain, -1, 1);
 
     // Yaw: nur Restkorrektur — Kurve kommt aus Bank + bankTurnRate
     // Solange noch nicht genug Bank: Yaw drosseln (verhindert „steif seitlich“)
