@@ -632,17 +632,33 @@ export function Hud({ data }: { data: HudData }) {
         </div>
       )}
 
-      {/* Kill Confirm — Apple Glass Splash Popup */}
+      {/* Kill Confirm — Steel Ops splash (military plate + brass) */}
       {data.killPopup && data.state === 'playing' && (
-        <div key={data.killPopup.id} className="kill-popup" aria-live="polite">
-          <div className="kill-popup-ring" />
-          <div className={`kill-popup-card ${data.killPopup.kind === 'ground' ? 'is-ground' : ''}`}>
-            <div className="kill-popup-title">{data.killPopup.title}</div>
-            <div className="kill-popup-target">{data.killPopup.targetName}</div>
-            <div className="kill-popup-points">+{data.killPopup.points}</div>
-            <div className="kill-popup-badge">
-              {data.killPopup.kind === 'air' ? 'Air Kill' : 'Ground Kill'}
+        <div
+          key={data.killPopup.id}
+          className={`ops-kill ${data.killPopup.kind === 'ground' ? 'is-ground' : 'is-air'}`}
+          aria-live="polite"
+        >
+          <div className="ops-kill-flash" />
+          <div className="ops-kill-scan" />
+          <div className="ops-kill-plate">
+            <div className="ops-kill-corners" aria-hidden />
+            <div className="ops-kill-top">
+              <span className="ops-kill-tag">
+                {data.killPopup.kind === 'air' ? 'A/A CONTACT' : 'A/G CONTACT'}
+              </span>
+              <span className="ops-kill-stamp">CONFIRMED</span>
             </div>
+            <div className="ops-kill-slash" aria-hidden />
+            <div className="ops-kill-title">{data.killPopup.title}</div>
+            <div className="ops-kill-target">{data.killPopup.targetName}</div>
+            <div className="ops-kill-footer">
+              <span className="ops-kill-badge">
+                {data.killPopup.kind === 'air' ? 'AIR KILL' : 'GROUND KILL'}
+              </span>
+              <span className="ops-kill-points">+{data.killPopup.points}</span>
+            </div>
+            <div className="ops-kill-bar" aria-hidden />
           </div>
         </div>
       )}

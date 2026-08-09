@@ -182,11 +182,6 @@ export class Game {
   private aimDir = new THREE.Vector3(0, 0, -1);
   private _ndc = new THREE.Vector3();
   private _proj = new THREE.Vector3();
-  /**
-   * Lock nur nach manuellem G: ohne dieses Flag kein Lock-Fortschritt,
-   * kein Ziel, kein „Auto-Lock“-Feeling.
-   */
-  private lockArmed = false;
   /** Geglättetes Lead-Fadenkreuz (Bildschirm-%) — weniger Zucken */
   private leadSmoothX = 50;
   private leadSmoothY = 50;
@@ -1142,7 +1137,6 @@ export class Game {
   private clearLock() {
     this.player.lockTarget = null;
     this.player.lockProgress = 0;
-    this.lockArmed = false;
   }
 
   /** Alle Damageables für Kanonen-Ballistik */
@@ -1156,12 +1150,12 @@ export class Game {
   }
 
   /**
-   * Lead-Indicator: nur bei manuell aufgeschaltetem Ziel (G),
-   * kein Auto-Fokus auf nächste Gegner.
+   * Lead-Indicator: Vorhalt auf aktuelles Auto-Lock-Ziel
+   * (sichtbar sobald gelockt / im Lock-Aufbau).
    */
   private computeLeadIndicator(): ScreenPos | null {
     const p = this.player;
-    if (!p.alive || this.state !== 'playing' || !this.lockArmed) {
+    if (!p.alive || this.state !== 'playing' || p.lockProgress <= 0) {
       this.leadSmoothActive = false;
       return null;
     }
@@ -1225,14 +1219,14 @@ export class Game {
   }
 
   /**
-   * Lock-On **ausschließlich** mit Taste G.
-   * Ohne G: kein Ziel, kein Progress, kein HUD-Locking.
-   * G: nächstes Ziel im Kegel (Bandits bevorzugt) aufschalten und halten.
+   * Auto-Lock: nächstes Ziel im Kegel wird automatisch aufgeschaltet.
+   * Progress baut sich über lockTime auf → Rakete (M/F) abschussbereit.
+   * G: manuell zum nächsten Ziel im Kegel springen (optional).
    */
   private updateLock(dt: number) {
     const player = this.player;
 
-    // Propeller / Early Jets ohne Lenkwaffen
+    // Propeller / Early Jets ohne Lenkwaffen: kein Lock-On
     if (!player.hasMissiles) {
       this.clearLock();
       return;
@@ -1240,10 +1234,7 @@ export class Game {
 
     const lockRange = player.lockRange;
     const lockTime = Math.max(0.35, player.lockTime);
-    // Großzügiger Kegel nur für manuelles G-Aufschalten
-    const acquireCone = THREE.MathUtils.degToRad(Math.max(player.lockAngleDeg * 1.6, 32));
-    // Engerer Kegel zum Halten des Locks
-    const holdCone = THREE.MathUtils.degToRad(Math.max(player.lockAngleDeg * 1.35, 26));
+    const cone = THREE.MathUtils.degToRad(Math.max(player.lockAngleDeg, 16));
 
     const targets: Damageable[] = [
       ...this.enemies.filter((e) => e.alive),
@@ -1251,54 +1242,59 @@ export class Game {
       ...this.aaaUnits.filter((a) => a.alive),
     ];
 
-    const inCone = (t: Damageable, cone: number): boolean => {
-      if (!t.alive) return false;
+    const valid = (t: Damageable | null): t is Damageable => {
+      if (!t?.alive) return false;
       const to = t.object.position.clone().sub(player.position);
       const dist = to.length();
       if (dist < 40 || dist > lockRange) return false;
       return player.forward.angleTo(to.normalize()) < cone;
     };
 
-    // ── G: manuell nächstes Ziel aufschalten ──
+    // Optional G: nächstes Ziel im Kegel (Bandits bevorzugt), zyklisch
     if (this.input.wasPressed('KeyG')) {
-      let best: Damageable | null = null;
-      let bestScore = -Infinity;
+      const ranked = targets
+        .filter((t) => valid(t))
+        .map((t) => {
+          const dist = t.object.position.distanceTo(player.position);
+          const isBandit = this.enemies.some((e) => e === t);
+          const angle = player.forward.angleTo(
+            t.object.position.clone().sub(player.position).normalize()
+          );
+          return { t, score: (isBandit ? 2000 : 0) + (lockRange - dist) - angle * 80 };
+        })
+        .sort((a, b) => b.score - a.score);
+      if (ranked.length > 0) {
+        const curIdx = ranked.findIndex((r) => r.t === player.lockTarget);
+        const next = ranked[(curIdx + 1) % ranked.length].t;
+        player.lockTarget = next;
+        player.lockProgress = Math.min(0.35, player.lockProgress);
+      }
+    }
+
+    let target = player.lockTarget;
+    if (!valid(target)) {
+      // Auto-Acquire: kleinster Winkel zur Nase im Kegel
+      target = null;
+      let bestAngle = cone;
       for (const t of targets) {
-        if (!inCone(t, acquireCone)) continue;
-        const dist = t.object.position.distanceTo(player.position);
-        const isBandit = this.enemies.some((e) => e === t);
-        const score = (isBandit ? 2000 : 0) + (lockRange - dist);
-        if (score > bestScore) {
-          bestScore = score;
-          best = t;
+        if (!valid(t)) continue;
+        const a = player.forward.angleTo(
+          t.object.position.clone().sub(player.position).normalize()
+        );
+        if (a < bestAngle) {
+          bestAngle = a;
+          target = t;
         }
       }
-      if (best) {
-        this.lockArmed = true;
-        player.lockTarget = best;
-        player.lockProgress = 0.05; // sofort sichtbarer Start
-      } else {
-        // G ohne Ziel → Lock abbrechen
-        this.clearLock();
-      }
-    }
-
-    // ── Ohne manuelles Armed: nie locken ──
-    if (!this.lockArmed) {
-      player.lockTarget = null;
       player.lockProgress = 0;
-      return;
-    }
-
-    // ── Nur gehaltenes Ziel fortführen — KEIN Auto-Acquire ──
-    const target = player.lockTarget;
-    if (!target || !inCone(target, holdCone)) {
-      this.clearLock();
-      return;
     }
 
     player.lockTarget = target;
-    player.lockProgress = Math.min(1, player.lockProgress + dt / lockTime);
+    if (target) {
+      player.lockProgress = Math.min(1, player.lockProgress + dt / lockTime);
+    } else {
+      player.lockProgress = 0;
+    }
   }
 
   private onHit(victim: Damageable, dmg: number, shooter: Damageable) {
@@ -1439,13 +1435,13 @@ export class Game {
     this.sound.missileLaunch();
   }
 
-  /** Kill-Confirm-Popup für HUD (Glass Splash) */
+  /** Kill-Confirm-Popup — Steel Ops Splash */
   private showKillPopup(targetName: string, points: number, kind: 'air' | 'ground') {
     this.killPopupSeq += 1;
     const titles =
       kind === 'air'
         ? ['SPLASH ONE', 'KILL CONFIRMED', 'BANDIT DOWN', 'TARGET DESTROYED']
-        : ['SAM DESTROYED', 'GROUND KILL', 'SITE CLEARED'];
+        : ['SAM DESTROYED', 'GROUND KILL', 'SITE CLEARED', 'HARDPOINT DOWN'];
     this.killPopup = {
       id: this.killPopupSeq,
       title: titles[this.killPopupSeq % titles.length],
@@ -1453,7 +1449,7 @@ export class Game {
       points,
       kind,
     };
-    this.killPopupTimer = 2.8;
+    this.killPopupTimer = 3.2;
     this.emitHud();
   }
 
