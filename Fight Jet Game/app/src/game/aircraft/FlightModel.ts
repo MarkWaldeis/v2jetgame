@@ -136,15 +136,15 @@ export class FlightModel {
         wantRoll = input.roll;
         wantYaw = input.yaw;
       }
-      // Realistischer: trägeres Einregeln (kein instant Gun-Follow-Mouse)
+      // Snappigeres Folgen der Maus (Kanone dorthin, wo der Cursor zeigt)
       const recapture = 1 - Math.exp(-F.fbwRecaptureRate * dt);
-      const smooth = Math.min(1, b * recapture * 0.92 + 0.28);
+      const smooth = Math.min(1, b * recapture + 0.65);
       this.cmdPitch += (wantPitch - this.cmdPitch) * smooth;
-      this.cmdRoll += (wantRoll - this.cmdRoll) * Math.min(1, smooth * 0.95);
-      this.cmdYaw += (wantYaw - this.cmdYaw) * Math.min(1, smooth * 0.75);
+      this.cmdRoll += (wantRoll - this.cmdRoll) * Math.min(1, smooth * 0.85);
+      this.cmdYaw += (wantYaw - this.cmdYaw) * smooth;
     } else {
-      // Manual: knackig, aber gefiltert
-      const k = 1 - Math.exp(-14 * dt);
+      // Manual: snappy, aber mit leichter Filterung gegen Ruckler
+      const k = 1 - Math.exp(-18 * dt);
       this.cmdPitch += (wantPitch - this.cmdPitch) * k;
       this.cmdRoll += (wantRoll - this.cmdRoll) * k;
       this.cmdYaw += (wantYaw - this.cmdYaw) * k;
@@ -207,43 +207,34 @@ export class FlightModel {
       yawRate += P.pFactorYaw * tPow * 0.65;
     }
 
-    // --- Wind & Böen: sichtbares, realistisches „Wehen“ der Zelle ---
+    // --- Wind & Böen: drehen / schieben die Zelle realistischer ---
+    // windSusceptibility skaliert (Props stärker, moderne Jets spürbar aber spielbar)
     if (opts.wind && opts.wind.lengthSq() > 0.01) {
       this._wind.copy(opts.wind);
-      const sus = Math.max(0.28, P.windSusceptibility);
+      const sus = Math.max(0.2, P.windSusceptibility);
       const wLen = this._wind.length();
-      const side = this._wind.dot(this._right);
-      const upW = this._wind.dot(this._up);
-      const head = -this._wind.dot(this._fwd);
+      const side = this._wind.dot(this._right); // Seitenwind
+      const upW = this._wind.dot(this._up); // Auf-/Abwind
+      const head = -this._wind.dot(this._fwd); // Gegenwind (+)
 
-      // 1) Seitenwind: Tragfläche kippt + leichte Gier
-      this.rollOmega += side * 0.042 * sus * dt * 12;
-      yawRate += side * 0.018 * sus;
+      // 1) Seitenwind: rollt die Tragfläche an + leichte Gier
+      this.rollOmega += side * 0.028 * sus * dt * 10;
+      yawRate += side * 0.012 * sus;
 
-      // 2) Aufwind / Fallböe: Nase nickt
-      pitchRate += upW * 0.022 * sus;
+      // 2) Aufwind / Fallböe: Nase hoch/runter
+      pitchRate += upW * 0.014 * sus;
 
-      // 3) Weathercocking in den Wind
-      const weathervane = side * (0.65 + Math.max(0, head) * 0.05);
-      yawRate += weathervane * 0.012 * sus;
+      // 3) Weathercocking: Nase will in den Wind (realistisch bei Seitenwind)
+      //    Gegenwind von schräg vorne → leichte Gier in den Wind
+      const weathervane = side * (0.55 + Math.max(0, head) * 0.04);
+      yawRate += weathervane * 0.008 * sus;
 
-      // 4) Böen-Turbulenz (sichtbar, nicht unkontrollierbar)
-      const turb = THREE.MathUtils.clamp(wLen / 12, 0, 1.55) * sus;
+      // 4) Turbulenz-Jitter proportional zur Windstärke (Böen)
+      const turb = THREE.MathUtils.clamp(wLen / 14, 0, 1.4) * sus;
       const t = performance.now() * 0.001;
-      this.rollOmega += Math.sin(t * 6.8 + side) * 0.48 * turb * dt * 7;
-      pitchRate += Math.sin(t * 4.7 + upW) * 0.32 * turb;
-      yawRate += Math.cos(t * 5.9 + head) * 0.26 * turb;
-    }
-
-    // --- Koordinierte Kurve / Bank-Turn (realistischer Look) ---
-    // Bei Schräglage und gezogenem Stick dreht die Nase in die Kurve
-    const bankForTurn = THREE.MathUtils.clamp(-this._right.y, -1, 1);
-    if (Math.abs(bankForTurn) > 0.08 && !this.stalled) {
-      const pull = Math.max(0, this.cmdPitch);
-      const bankTurn = (F.bankTurnRate ?? 0) * bankForTurn * (0.35 + pull * 1.1) * agility;
-      yawRate += bankTurn;
-      // leichte Gier-Hilfe in die Bank (coord)
-      yawRate += bankForTurn * Math.abs(this.cmdPitch) * (F.coordTurnYaw ?? 0) * agility * 0.55;
+      this.rollOmega += Math.sin(t * 7.3 + side) * 0.35 * turb * dt * 6;
+      pitchRate += Math.sin(t * 5.1 + upW) * 0.22 * turb;
+      yawRate += Math.cos(t * 6.2 + head) * 0.18 * turb;
     }
 
     // Stall: Nase fällt, Ruder weich, ggf. Trudeln
@@ -334,30 +325,22 @@ export class FlightModel {
       0.35;
     drag += F.aoaDrag * P.inducedDragMult * Math.abs(this.aoa) * this.speed;
 
-    // Steigen bremst, Sinken beschleunigt (Energie-Management)
-    const climbY = this.velocityDir.y; // +1 = pure climb, -1 = pure dive
-    const climbBrake = F.climbBrake ?? 36;
-    const diveAccel = F.diveAccel ?? 40;
-    let climbEffect = 0;
-    if (climbY > 0.02) {
-      // Steigen: spürbar langsamer (proportional zum Steigwinkel)
-      climbEffect = -climbY * climbBrake;
-    } else if (climbY < -0.02) {
-      // Sinken: etwas schneller (nicht zu stark — fair)
-      climbEffect = -climbY * diveAccel * 0.85;
-    }
+    // Steigen bremst, Sinken beschleunigt (entlang Velocity)
+    const climbEffect = -this.velocityDir.y * 22;
     this.speed += (accel - drag + climbEffect) * dt;
 
-    // Wind: Geschwindigkeit + Drift
+    // Wind: Geschwindigkeit + Drift (Gegenwind bremst, Seitenwind schiebt)
     if (opts.wind && opts.wind.lengthSq() > 0.01) {
-      const sus = Math.max(0.28, P.windSusceptibility);
+      const sus = Math.max(0.2, P.windSusceptibility);
       const head = -opts.wind.dot(this.velocityDir);
-      this.speed += head * 0.18 * sus * dt;
-      this.object.position.addScaledVector(opts.wind, dt * 0.28 * sus);
-      this.velocityDir.addScaledVector(opts.wind, dt * 0.008 * sus).normalize();
+      this.speed += head * 0.14 * sus * dt;
+      // Seitliche / vertikale Versetzung (Drift)
+      this.object.position.addScaledVector(opts.wind, dt * 0.22 * sus);
+      // Velocity-Dir leicht vom Wind mitgenommen (mehr „weht ab“)
+      this.velocityDir.addScaledVector(opts.wind, dt * 0.006 * sus).normalize();
     }
 
-    const minSpd = opts.airbrake ? 28 : Math.max(24, 32 * (0.85 + P.stallSpeedMult * 0.1));
+    const minSpd = opts.airbrake ? 28 : Math.max(22, 30 * (0.85 + P.stallSpeedMult * 0.1));
     this.speed = THREE.MathUtils.clamp(
       this.speed,
       minSpd,
@@ -367,17 +350,16 @@ export class FlightModel {
     // --- Position entlang Velocity Vector (nicht Nase!) ---
     const vel = this._tmp2.copy(this.velocityDir).multiplyScalar(this.speed);
     const gravityFactor = THREE.MathUtils.clamp(
-      1.35 - this.speed / Math.max(40, F.cruiseSpeed * sm),
+      1.3 - this.speed / Math.max(40, F.cruiseSpeed * sm),
       0,
-      1.5
+      1.4
     );
+    // Stall: stärkerer Höhenverlust
     const stallSink = this.stalled ? 1 + (1 - this.speed / Math.max(1, stallThreshold)) * 1.8 : 1;
-    // Extra: im Steigen zieht Gravity stärker an der Energy
-    const climbG =
-      climbY > 0.05 ? 1 + climbY * (F.climbGravityExtra ?? 0.55) : 1;
-    vel.y -= F.gravityPull * gravityFactor * stallSink * climbG * dt * 8;
+    vel.y -= F.gravityPull * gravityFactor * stallSink * dt * 8;
+    // Gravity zieht Velocity-Dir leicht nach unten bei niedriger Speed
     if (gravityFactor > 0.05) {
-      this.velocityDir.y -= gravityFactor * 0.42 * stallSink * climbG * dt;
+      this.velocityDir.y -= gravityFactor * 0.35 * stallSink * dt;
       this.velocityDir.normalize();
     }
     this.object.position.addScaledVector(vel, dt);
@@ -390,18 +372,18 @@ export class FlightModel {
   }
 
   /**
-   * Mouse-Aim FBW — realistisch (War-Thunder-Roll-to-Turn):
-   * 1) Große Seitenfehler → erst einrollen (Bank)
-   * 2) Pitch zieht in der Schräglage die Kurve
-   * 3) Yaw nur Feinkorrektur / Seitenruder
-   * aimDir = Welt-Unit-Vektor zum Virtual Aim Point (+ Soft-Assist).
+   * Mouse-Aim FBW (Arcade / Gun-Follow-Mouse):
+   * Die Nase (Kanone) folgt der Maus vor allem per Pitch + Yaw.
+   * Rollen wird stark begrenzt, damit das Flugzeug nicht „durchdreht“,
+   * sondern ruhig auf den Mauspunkt zielt.
+   * aimDir = Welt-Unit-Vektor zum Virtual Aim Point.
    */
   private computeFbwCommands(aimDir: THREE.Vector3): FlightInput {
     const F = CONFIG.flight;
     this._qInv.copy(this.object.quaternion).invert();
     this._localAim.copy(aimDir).applyQuaternion(this._qInv);
 
-    // Body: +X right, +Y up, -Z forward
+    // Body: +X right, +Y up, -Z forward — Ziel vor uns: local.z < 0
     const lx = this._localAim.x;
     const ly = this._localAim.y;
     const lz = this._localAim.z;
@@ -409,53 +391,35 @@ export class FlightModel {
     const horiz = Math.sqrt(lx * lx + lz * lz) + 1e-6;
     const pitchErr = Math.atan2(ly, horiz); // + = Ziel über Nase
     const yawErr = Math.atan2(lx, -lz); // + = Ziel rechts
+
+    // Pitch: Nase zum Mauspunkt (stärker als zuvor)
+    const pitchCmd = THREE.MathUtils.clamp(pitchErr * F.fbwPitchGain * 1.15, -1, 1);
+
+    // Yaw: seitlich zum Mauspunkt — primäre „Richtung“ statt harter Roll
+    // (Intern: +yaw = Nase nach links → Vorzeichen umkehren für Ziel rechts)
+    const yawCmd = THREE.MathUtils.clamp(-yawErr * F.fbwYawGain * 2.4, -1, 1);
+
+    // Nur leichte Bank als Hilfe, stark gekappt — verhindert Dauer-Spins
     const bank = THREE.MathUtils.clamp(-this._right.y, -1, 1);
+    const softRoll = THREE.MathUtils.clamp(yawErr * F.fbwRollGain * 0.18, -0.35, 0.35);
+    // Aktive Schräglage zurücknehmen (Auto-Level unter Mouse-Aim)
+    let rollCmd = softRoll - bank * 0.55;
+    rollCmd = THREE.MathUtils.clamp(rollCmd, -0.4, 0.4);
 
-    const yawAbs = Math.abs(yawErr);
-    const pitchAbs = Math.abs(pitchErr);
-
-    // Totzone: auf dem Punkt → Bank abbauen, ruhig halten
-    if (pitchAbs < 0.03 && yawAbs < 0.03) {
+    // Totzone: fast auf dem Ziel → ruhig halten + Level
+    if (Math.abs(pitchErr) < 0.025 && Math.abs(yawErr) < 0.025) {
       return {
-        pitch: THREE.MathUtils.clamp(pitchErr * F.fbwPitchGain * 0.4, -0.25, 0.25),
-        roll: THREE.MathUtils.clamp(-bank * 0.85, -0.55, 0.55),
+        pitch: 0,
+        roll: THREE.MathUtils.clamp(-bank * 0.7, -0.35, 0.35),
         yaw: 0,
       };
     }
 
-    // Gewünschte Bank aus Horizontal-Fehler (Roll-to-Turn)
-    const desiredBank = THREE.MathUtils.clamp(
-      yawErr * 1.35,
-      -0.92,
-      0.92
-    );
-    const bankErr = desiredBank - bank;
-
-    // Bei großem Seitenfehler: stark rollen, wenig reiner Yaw
-    const rollFirst = 1 - THREE.MathUtils.clamp(F.fbwRollPriority ?? 0.32, 0, 1);
-    const sideWeight = THREE.MathUtils.smoothstep(yawAbs, 0.06, 0.55);
-
-    let rollCmd = bankErr * F.fbwRollGain * (0.55 + sideWeight * 0.7 * rollFirst);
-    rollCmd = THREE.MathUtils.clamp(rollCmd, -1, 1);
-
-    // Pitch: Nase zum Ziel — bei Bank wirkt das als Kurve
-    let pitchCmd = THREE.MathUtils.clamp(pitchErr * F.fbwPitchGain, -1, 1);
-    // Leichtes Ziehen in die Kurve, wenn stark gebankt und seitlicher Fehler
-    if (Math.abs(bank) > 0.2 && yawAbs > 0.05) {
-      pitchCmd += Math.sign(pitchCmd || 1) * Math.min(0.25, Math.abs(bank) * 0.22);
-      pitchCmd = THREE.MathUtils.clamp(pitchCmd, -1, 1);
-    }
-
-    // Yaw nur Feinkorrektur (Seitenruder), nicht Hauptsteuerung
-    const yawWeight = 1 - sideWeight * 0.75 * rollFirst;
-    const yawCmd = THREE.MathUtils.clamp(-yawErr * F.fbwYawGain * yawWeight, -0.55, 0.55);
-
-    // Fast aligned horizontal → Bank glätten
-    if (yawAbs < 0.1) {
-      rollCmd = THREE.MathUtils.clamp(rollCmd * 0.55 - bank * 0.35, -0.7, 0.7);
-    }
-
-    return { pitch: pitchCmd, roll: rollCmd, yaw: yawCmd };
+    return {
+      pitch: pitchCmd,
+      roll: rollCmd,
+      yaw: yawCmd,
+    };
   }
 
   private rotateLocal(axis: THREE.Vector3, angle: number) {

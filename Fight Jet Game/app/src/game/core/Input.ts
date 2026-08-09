@@ -75,24 +75,14 @@ export class Input {
     this.accumMX += e.movementX;
     this.accumMY += e.movementY;
 
-    // Ohne Pointer-Lock: Cursor über Canvas → Aim.
-    // Außerhalb: Aim zur Mitte (kein „festkleben“ am Rand → unkontrolliertes Ziehen).
+    // Ohne Pointer-Lock: absolute Cursor-Position → Aim-Reticle
     if (!this.pointerLocked && this.canvas && !this.freeLookHeld) {
       const rect = this.canvas.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
-      const inside =
-        e.clientX >= rect.left &&
-        e.clientX <= rect.right &&
-        e.clientY >= rect.top &&
-        e.clientY <= rect.bottom;
-      if (inside) {
+      if (rect.width > 0 && rect.height > 0) {
         const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         const ny = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
         this.aimX = Math.max(-1, Math.min(1, nx));
         this.aimY = Math.max(-1, Math.min(1, ny));
-      } else {
-        this.aimX = 0;
-        this.aimY = 0;
       }
     }
   };
