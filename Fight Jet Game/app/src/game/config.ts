@@ -29,45 +29,39 @@ export const CONFIG = {
     /** AoA-Drag */
     aoaDrag: 0.085,
 
-    // --- Ruder: snappy Roll, wenig flaches Yaw ---
+    // --- Ruder (stabiler Stand vor Aim-Experimenten) ---
     pitchRate: 1.48,
-    rollRate: 2.55,
-    yawRate: 0.42,
-    rollAccel: 14,
-    rollDamping: 4.0,
+    rollRate: 2.05,
+    yawRate: 0.55,
+    rollAccel: 9.2,
+    rollDamping: 4.4,
 
-    // --- Mouse-Aim FBW: erst einrollen, dann Kurve (sichtbare Schräglage) ---
-    fbwRollGain: 4.5,
-    fbwPitchGain: 2.5,
-    fbwYawGain: 0.12,
-    /** 0 = zuerst rollen, 1 = direkter Yaw — sehr niedrig = realistisches Neigen */
-    fbwRollPriority: 0.08,
-    fbwRecaptureRate: 5.5,
+    // --- Mouse-Aim FBW: klassisches Roll-to-Turn (nicht übersteuert) ---
+    fbwRollGain: 3.0,
+    fbwPitchGain: 2.45,
+    fbwYawGain: 0.48,
+    /** 0 = zuerst rollen, 1 = mehr direkter Yaw */
+    fbwRollPriority: 0.32,
+    fbwRecaptureRate: 4.2,
     aimMargin: 0.92,
     aimSensitivity: 0.0014,
 
-    /**
-     * Soft Aim-Assist AUS (fühlt sich wie Auto-Lock an).
-     * 0 = komplett deaktiviert.
-     */
+    /** Soft Aim-Assist aus (kein Magnet zu Gegnern) */
     aimAssistConeDeg: 14,
     aimAssistStrength: 0,
     aimAssistRange: 1150,
     aimAssistMinDot: 0.55,
 
-    // --- Velocity / AoA (Nase ≠ Velocity = realistischer Look) ---
+    // --- Velocity / AoA ---
     velocityAlignRate: 2.35,
     maxAoa: 0.52,
     angularDamping: 3.4,
 
     /**
-     * Koordinierte Kurve: Schräglage dreht die Nase (kein flaches Seitwärtsgieren).
+     * Koordinierte Kurve — moderate Werte (starke Werte = unkontrolliertes „Ziehen“).
      */
-    coordTurnYaw: 0.72,
-    /** Bank → Heading-Turn */
-    bankTurnRate: 1.35,
-    /** Bank-Turn-Anteil auch ohne Ziehen */
-    bankTurnBase: 0.88,
+    coordTurnYaw: 0.42,
+    bankTurnRate: 0.55,
     rollYawCoupling: 0,
 
     autoLevelRate: 1.15,

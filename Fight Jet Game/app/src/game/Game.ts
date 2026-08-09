@@ -180,10 +180,8 @@ export class Game {
   private _windSample = new THREE.Vector3();
 
   private aimDir = new THREE.Vector3(0, 0, -1);
+  private _ndc = new THREE.Vector3();
   private _proj = new THREE.Vector3();
-  private _aimFwd = new THREE.Vector3();
-  private _aimRight = new THREE.Vector3();
-  private _aimUp = new THREE.Vector3();
   /**
    * Lock nur nach manuellem G: ohne dieses Flag kein Lock-Fortschritt,
    * kein Ziel, kein „Auto-Lock“-Feeling.
@@ -1078,56 +1076,24 @@ export class Game {
   }
 
   /**
-   * Aim-NDC → Welt-Richtungsvektor für FBW (kein Soft-Aim / kein Auto-Lock).
-   * WICHTIG: Der Strahl wird NICHT mit der rohen Kamera-Quaternion geunprojektiert.
-   * Die Chase-Kamera rollt/hinkt dem Jet hinterher — dadurch kippt das
-   * Kamera-Koordinatensystem und Maus-rechts landet im Jet-Frame mal links,
-   * mal rechts (gefühlte „vertauschte“ Steuerung). Stattdessen bauen wir den
-   * Strahl aus Kamera-Position + Kamera-Blickrichtung mit entferntem Roll
-   * (Welt-Up als Referenz). Maus-rechts ist damit IMMER rechts.
+   * Klassisches Mouse-Aim: NDC → Weltstrahl per Camera-unproject.
+   * (Stand vor Aim-Experimenten — stabil, vorhersehbar.)
    */
   private computeAimDir() {
     const cam = this.engine.camera;
     const margin = CONFIG.flight.aimMargin;
-    // Totzone um die Bildschirmmitte: ruht die Maus nur leicht neben dem
-    // Zentrum, soll der Jet geradeaus fliegen — nicht langsam davonziehen.
-    const deadzone = (v: number) => {
-      const a = Math.abs(v);
-      if (a <= 0.07) return 0;
-      return (Math.sign(v) * (a - 0.07)) / 0.93;
-    };
-    const ax = deadzone(THREE.MathUtils.clamp(this.input.aimX, -margin, margin));
-    const ay = deadzone(THREE.MathUtils.clamp(this.input.aimY, -margin, margin));
+    const ax = THREE.MathUtils.clamp(this.input.aimX, -margin, margin);
+    const ay = THREE.MathUtils.clamp(this.input.aimY, -margin, margin);
 
-    // Blickrichtung der Kamera, Roll entfernt
-    cam.getWorldDirection(this._aimFwd);
-    if (this._aimFwd.lengthSq() < 0.5) {
-      this.aimDir.copy(this.player.forward);
-      return;
-    }
-    // right = forward × worldUp (degeneriert bei senkrechtem Blick → Jet-Achsen)
-    this._aimRight.crossVectors(this._aimFwd, THREE.Object3D.DEFAULT_UP);
-    if (this._aimRight.lengthSq() < 1e-4) {
-      this._aimRight.set(1, 0, 0).applyQuaternion(this.player.object.quaternion);
-    }
-    this._aimRight.normalize();
-    this._aimUp.crossVectors(this._aimRight, this._aimFwd).normalize();
+    // Ray durch Near-Plane-Punkt
+    this._ndc.set(ax, ay, 0.5);
+    this._ndc.unproject(cam);
+    this.aimDir.copy(this._ndc).sub(cam.position).normalize();
 
-    // NDC → Richtung über FOV/Aspect (entspricht unproject ohne Kamera-Roll)
-    const persp = cam as THREE.PerspectiveCamera;
-    const tanY = Math.tan(THREE.MathUtils.degToRad(persp.fov * 0.5));
-    const tanX = tanY * (persp.aspect || 1);
-    this.aimDir
-      .copy(this._aimFwd)
-      .addScaledVector(this._aimRight, ax * tanX)
-      .addScaledVector(this._aimUp, ay * tanY)
-      .normalize();
-
-    // Fallback: wenn degeneriert, Nase nutzen
+    // Fallback: wenn unproject degeneriert, Nase nutzen
     if (this.aimDir.lengthSq() < 0.5) {
       this.aimDir.copy(this.player.forward);
     }
-    // Soft Aim-Assist absichtlich deaktiviert (aimAssistStrength = 0)
   }
 
   /** Weltpunkt → HUD % Position */

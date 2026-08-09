@@ -75,16 +75,12 @@ export class Input {
     this.accumMX += e.movementX;
     this.accumMY += e.movementY;
 
-    // Ohne Pointer-Lock: absolute Cursor-Position → Aim-Reticle.
-    // WICHTIG: Nur solange der Cursor ÜBER dem Canvas ist. Liegt er
-    // darüber/darunter (Browser-UI, zweiter Monitor, Menü-Klick am
-    // Bildschirmrand), würde der Aim sonst an ±1 geklemmt → Jet zieht
-    // dauerhaft voll nach oben/unten/seitlich.
+    // Ohne Pointer-Lock: Cursor über Canvas → Aim.
+    // Außerhalb: Aim zur Mitte (kein „festkleben“ am Rand → unkontrolliertes Ziehen).
     if (!this.pointerLocked && this.canvas && !this.freeLookHeld) {
       const rect = this.canvas.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
       const inside =
-        rect.width > 0 &&
-        rect.height > 0 &&
         e.clientX >= rect.left &&
         e.clientX <= rect.right &&
         e.clientY >= rect.top &&
@@ -94,9 +90,18 @@ export class Input {
         const ny = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
         this.aimX = Math.max(-1, Math.min(1, nx));
         this.aimY = Math.max(-1, Math.min(1, ny));
+      } else {
+        this.aimX = 0;
+        this.aimY = 0;
       }
     }
   };
+
+  /** Aim-Reticle auf Bildschirmmitte (Spielstart / Menü→Mission). */
+  resetAim() {
+    this.aimX = 0;
+    this.aimY = 0;
+  }
 
   private onMouseDown = (e: MouseEvent) => {
     if (e.button === 2) {
@@ -124,12 +129,6 @@ export class Input {
   private onPointerLock = () => {
     this.pointerLocked = document.pointerLockElement != null;
   };
-
-  /** Aim-Reticle zurück auf Bildschirmmitte (z. B. bei Spielstart). */
-  resetAim() {
-    this.aimX = 0;
-    this.aimY = 0;
-  }
 
   wasPressed(code: string): boolean {
     return this.pressedThisFrame.has(code);
