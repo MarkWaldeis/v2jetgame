@@ -2,13 +2,17 @@ import * as THREE from 'three';
 
 interface NozzleFx {
   group: THREE.Group;
+  /** Leuchtender Kern der Düse (sitzt in der Öffnung) */
+  throat: THREE.Mesh;
   disc: THREE.Mesh;
   ring: THREE.Mesh;
   halo: THREE.Mesh;
   core: THREE.Mesh;
+  mid: THREE.Mesh;
   outer: THREE.Mesh;
   diamonds: THREE.Mesh[];
   phase: number;
+  radius: number;
 }
 
 const additive = (color: number, opacity = 0) =>
@@ -23,9 +27,8 @@ const additive = (color: number, opacity = 0) =>
   });
 
 /**
- * Saubere, modellkalibrierte Triebwerks-FX.
- * Local +Z ist das Heck: jede Flamme beginnt plan am realen Duesenaustritt
- * und verlaeuft ausschliesslich hinter dem Jet.
+ * Triebwerks-FX: Flamme beginnt **in** der Düse (Local +Z = Heck).
+ * Throat/Disc auf Austrittsebene z≈0, Plume ausschließlich nach +Z.
  */
 export class EngineFx {
   readonly group = new THREE.Group();
@@ -35,12 +38,16 @@ export class EngineFx {
   private level = 0;
   private fxScale = 1;
 
-  constructor(nozzles: THREE.Vector3[] = [new THREE.Vector3(0, -0.05, 7.4)], scale = 1) {
+  constructor(
+    nozzles: THREE.Vector3[] = [new THREE.Vector3(0, -0.05, 7.4)],
+    scale = 1,
+    radii?: number[]
+  ) {
     this.group.name = 'engineFx';
-    this.configure(nozzles, scale);
+    this.configure(nozzles, scale, radii);
   }
 
-  configure(nozzles: THREE.Vector3[], scale = 1) {
+  configure(nozzles: THREE.Vector3[], scale = 1, radii?: number[]) {
     this.group.traverse((object) => {
       const mesh = object as THREE.Mesh;
       if (!mesh.isMesh) return;
@@ -52,8 +59,8 @@ export class EngineFx {
     this.nozzles = [];
     this.fxScale = scale;
 
-    // Einheitskegel: breite Basis exakt bei z=0, Spitze bei z=+1.
-    const makeCone = (radius: number, segments = 20) => {
+    // Kegel: Basis bei z=0 (Düsenlippe), Spitze bei z=+1 (Heckstrom)
+    const makeCone = (radius: number, segments = 22) => {
       const geometry = new THREE.ConeGeometry(radius, 1, segments, 1, true);
       geometry.rotateX(Math.PI / 2);
       geometry.translate(0, 0, 0.5);
@@ -61,37 +68,56 @@ export class EngineFx {
     };
 
     nozzles.forEach((position, index) => {
+      const r0 = radii?.[index] ?? 0.28 * scale;
+      const r = THREE.MathUtils.clamp(r0, 0.12, 0.55);
       const nozzle = new THREE.Group();
       nozzle.name = `engineNozzleFx-${index}`;
       nozzle.position.copy(position);
 
-      // Duenenring und weicher Halo bleiben direkt auf der Austrittsebene.
-      const halo = new THREE.Mesh(new THREE.CircleGeometry(0.58, 28), additive(0x4b8cff));
-      halo.position.z = 0.018;
-      nozzle.add(halo);
+      // ── Throat: sitzt leicht **vor** der Lippe (negatives Z) = im Rohr ──
+      const throat = new THREE.Mesh(
+        new THREE.CircleGeometry(r * 0.92, 32),
+        additive(0xffc998)
+      );
+      throat.position.z = -r * 0.22;
+      nozzle.add(throat);
 
-      const disc = new THREE.Mesh(new THREE.CircleGeometry(0.31, 28), additive(0xd9efff));
-      disc.position.z = 0.026;
+      // Austrittsscheibe (knapp hinter Throat, noch im / am Rand)
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(r * 0.78, 32), additive(0xffe8d0));
+      disc.position.z = -r * 0.04;
       nozzle.add(disc);
 
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.045, 8, 28), additive(0x78bfff));
-      ring.position.z = 0.035;
+      // Weicher Glow-Halo (dünn, nicht riesig außerhalb)
+      const halo = new THREE.Mesh(new THREE.CircleGeometry(r * 1.35, 32), additive(0x4a8cff));
+      halo.position.z = 0.01;
+      nozzle.add(halo);
+
+      // Düsenring auf der Lippe
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(r * 0.88, r * 0.1, 10, 36),
+        additive(0x9fd0ff)
+      );
+      ring.position.z = 0.02;
       nozzle.add(ring);
 
-      // Gestaffelter Kern und transparente Mantelflamme.
-      const core = new THREE.Mesh(makeCone(0.19, 18), additive(0xffead0));
-      const outer = new THREE.Mesh(makeCone(0.35, 22), additive(0x397cff));
-      nozzle.add(outer, core);
+      // Gestaffelte Plume: hot core → mid → cool outer
+      const core = new THREE.Mesh(makeCone(r * 0.42, 20), additive(0xfff0d8));
+      const mid = new THREE.Mesh(makeCone(r * 0.72, 22), additive(0xffaa66));
+      const outer = new THREE.Mesh(makeCone(r * 1.05, 24), additive(0x3a7cff));
+      // Leicht hinter der Lippe starten, damit Basis in der Öffnung steckt
+      core.position.z = -r * 0.08;
+      mid.position.z = -r * 0.05;
+      outer.position.z = 0;
+      nozzle.add(outer, mid, core);
 
-      // Dezente Shock-Diamonds geben dem Nachbrenner Tiefe, ohne die Duesen
-      // mit einer weissen Scheibe zu ueberstrahlen.
+      // Shock-Diamonds (nur AB)
       const diamonds: THREE.Mesh[] = [];
-      for (let d = 0; d < 3; d++) {
+      for (let d = 0; d < 4; d++) {
         const diamond = new THREE.Mesh(
-          new THREE.OctahedronGeometry(0.23, 0),
-          additive(d === 0 ? 0xcce8ff : 0x78a7ff)
+          new THREE.OctahedronGeometry(r * 0.55, 0),
+          additive(d === 0 ? 0xe8f4ff : 0x7eb0ff)
         );
-        diamond.position.z = 0.65 + d * 0.62;
+        diamond.position.z = r * 1.1 + d * r * 1.35;
         nozzle.add(diamond);
         diamonds.push(diamond);
       }
@@ -99,86 +125,111 @@ export class EngineFx {
       this.group.add(nozzle);
       this.nozzles.push({
         group: nozzle,
+        throat,
         disc,
         ring,
         halo,
         core,
+        mid,
         outer,
         diamonds,
         phase: index * 1.73,
+        radius: r,
       });
     });
 
     const centroid = new THREE.Vector3();
     for (const position of nozzles) centroid.add(position);
     if (nozzles.length) centroid.divideScalar(nozzles.length);
-    this.light.position.copy(centroid).add(new THREE.Vector3(0, 0, 1.2 * scale));
+    this.light.position.copy(centroid).add(new THREE.Vector3(0, 0, 1.1 * scale));
     this.group.add(this.light);
   }
 
   update(dt: number, throttle: number, afterburner: boolean) {
     this.time += dt;
-    const dryPower = THREE.MathUtils.clamp(0.06 + throttle * 0.38, 0.06, 0.44);
+    const dryPower = THREE.MathUtils.clamp(0.08 + throttle * 0.42, 0.08, 0.48);
     const target = afterburner ? 1 : dryPower;
-    this.level += (target - this.level) * Math.min(1, dt * (afterburner ? 9 : 5));
+    this.level += (target - this.level) * Math.min(1, dt * (afterburner ? 10 : 5.5));
 
-    const scale = this.fxScale;
     this.nozzles.forEach((nozzle) => {
       const flutter =
-        0.92 +
-        Math.sin(this.time * 31 + nozzle.phase) * 0.045 +
-        Math.sin(this.time * 53 + nozzle.phase * 0.7) * 0.025;
+        0.93 +
+        Math.sin(this.time * 33 + nozzle.phase) * 0.04 +
+        Math.sin(this.time * 57 + nozzle.phase * 0.7) * 0.022;
       const level = this.level * flutter;
-      const ab = afterburner ? THREE.MathUtils.smoothstep(this.level, 0.45, 0.95) : 0;
+      const ab = afterburner ? THREE.MathUtils.smoothstep(this.level, 0.42, 0.95) : 0;
+      const r = nozzle.radius;
 
-      const discMaterial = nozzle.disc.material as THREE.MeshBasicMaterial;
-      discMaterial.color.setHex(afterburner ? 0xffe8cc : 0x8ab7ff);
-      discMaterial.opacity = level * (afterburner ? 0.62 : 0.28);
-      nozzle.disc.scale.setScalar(scale * (0.88 + level * 0.12));
+      // Throat: heiß im Rohr
+      const throatMat = nozzle.throat.material as THREE.MeshBasicMaterial;
+      throatMat.color.setHex(afterburner ? 0xffd4a0 : 0x9ec4ff);
+      throatMat.opacity = level * (afterburner ? 0.78 : 0.38);
+      nozzle.throat.scale.setScalar(0.92 + level * 0.1);
 
-      const ringMaterial = nozzle.ring.material as THREE.MeshBasicMaterial;
-      ringMaterial.color.setHex(afterburner ? 0xb7d8ff : 0x557fc2);
-      ringMaterial.opacity = level * (afterburner ? 0.5 : 0.22);
-      nozzle.ring.scale.setScalar(scale * (0.94 + level * 0.08));
+      const discMat = nozzle.disc.material as THREE.MeshBasicMaterial;
+      discMat.color.setHex(afterburner ? 0xffe8cc : 0xb0d0ff);
+      discMat.opacity = level * (afterburner ? 0.7 : 0.32);
+      nozzle.disc.scale.setScalar(0.9 + level * 0.12);
 
-      const haloMaterial = nozzle.halo.material as THREE.MeshBasicMaterial;
-      haloMaterial.opacity = level * (afterburner ? 0.18 : 0.08);
-      nozzle.halo.scale.setScalar(scale * (0.86 + level * (afterburner ? 0.3 : 0.1)));
+      const ringMat = nozzle.ring.material as THREE.MeshBasicMaterial;
+      ringMat.color.setHex(afterburner ? 0xc8e4ff : 0x6a9ad0);
+      ringMat.opacity = level * (afterburner ? 0.55 : 0.28);
+      nozzle.ring.scale.setScalar(0.96 + level * 0.06);
 
-      const coreLength = scale * (afterburner ? 1.4 + flutter * 0.22 : 0.36 + level * 0.42);
-      const coreWidth = scale * (0.72 + level * 0.16);
-      nozzle.core.scale.set(coreWidth, coreWidth, coreLength);
-      const coreMaterial = nozzle.core.material as THREE.MeshBasicMaterial;
-      coreMaterial.color.setHex(afterburner ? 0xffdfb8 : 0x8fbfff);
-      coreMaterial.opacity = level * (afterburner ? 0.58 : 0.24);
+      const haloMat = nozzle.halo.material as THREE.MeshBasicMaterial;
+      haloMat.opacity = level * (afterburner ? 0.16 : 0.07);
+      nozzle.halo.scale.setScalar(0.9 + level * (afterburner ? 0.28 : 0.1));
 
-      const outerLength = scale * (afterburner ? 2.25 + flutter * 0.32 : 0.58 + level * 0.55);
-      const outerWidth = scale * (0.78 + level * 0.18);
-      nozzle.outer.scale.set(outerWidth, outerWidth, outerLength);
-      const outerMaterial = nozzle.outer.material as THREE.MeshBasicMaterial;
-      outerMaterial.color.setHex(afterburner ? 0x377dff : 0x315d9f);
-      outerMaterial.opacity = level * (afterburner ? 0.22 : 0.1);
+      // Plume-Längen in Einheiten des Kegel-Geometrie-z (Scale.z)
+      const coreLen = (afterburner ? 2.4 + flutter * 0.35 : 0.55 + level * 0.7) * (r / 0.28);
+      const midLen = (afterburner ? 3.4 + flutter * 0.4 : 0.85 + level * 0.9) * (r / 0.28);
+      const outerLen = (afterburner ? 4.6 + flutter * 0.5 : 1.15 + level * 1.1) * (r / 0.28);
+      const wCore = 0.85 + level * 0.2;
+      const wMid = 0.9 + level * 0.22;
+      const wOuter = 0.95 + level * 0.25;
+
+      nozzle.core.scale.set(wCore, wCore, coreLen);
+      nozzle.mid.scale.set(wMid, wMid, midLen);
+      nozzle.outer.scale.set(wOuter, wOuter, outerLen);
+
+      const coreMat = nozzle.core.material as THREE.MeshBasicMaterial;
+      coreMat.color.setHex(afterburner ? 0xfff2dc : 0xc8e0ff);
+      coreMat.opacity = level * (afterburner ? 0.72 : 0.32);
+
+      const midMat = nozzle.mid.material as THREE.MeshBasicMaterial;
+      midMat.color.setHex(afterburner ? 0xff9a45 : 0x6a9fff);
+      midMat.opacity = level * (afterburner ? 0.38 : 0.14);
+
+      const outerMat = nozzle.outer.material as THREE.MeshBasicMaterial;
+      outerMat.color.setHex(afterburner ? 0x2f6fff : 0x2a5088);
+      outerMat.opacity = level * (afterburner ? 0.2 : 0.09);
 
       nozzle.diamonds.forEach((diamond, index) => {
-        const visible = ab > 0.02;
+        const visible = ab > 0.03;
         diamond.visible = visible;
         if (!visible) return;
-        diamond.position.z = scale * (0.68 + index * 0.62 + Math.sin(this.time * 17 + index) * 0.025);
-        diamond.scale.set(scale * 0.44, scale * 0.44, scale * (0.62 + index * 0.06));
-        (diamond.material as THREE.MeshBasicMaterial).opacity = ab * (0.24 - index * 0.045) * flutter;
+        diamond.position.z =
+          r * (1.15 + index * 1.25) + Math.sin(this.time * 18 + index) * r * 0.06;
+        const s = r * (0.9 + index * 0.08) * (0.85 + ab * 0.25);
+        diamond.scale.set(s, s, s * 1.35);
+        (diamond.material as THREE.MeshBasicMaterial).opacity =
+          ab * (0.28 - index * 0.045) * flutter;
       });
 
-      const visible = level > 0.025;
+      const visible = level > 0.02;
+      nozzle.throat.visible = visible;
       nozzle.disc.visible = visible;
       nozzle.ring.visible = visible;
       nozzle.halo.visible = visible;
       nozzle.core.visible = visible;
+      nozzle.mid.visible = visible;
       nozzle.outer.visible = visible;
     });
 
-    this.light.intensity = this.level * (afterburner ? 7 : 1.5) * Math.max(1, this.nozzles.length * 0.65);
-    this.light.distance = (afterburner ? 34 : 16) * scale;
-    this.light.color.setHex(afterburner ? 0x72a9ff : 0x4f73aa);
+    this.light.intensity =
+      this.level * (afterburner ? 8.5 : 1.8) * Math.max(1, this.nozzles.length * 0.6);
+    this.light.distance = (afterburner ? 36 : 18) * this.fxScale;
+    this.light.color.setHex(afterburner ? 0x88b8ff : 0x5578aa);
   }
 
   setAfterburner(on: boolean) {

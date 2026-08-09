@@ -120,21 +120,16 @@ export abstract class Aircraft {
     }
     this.flutter.attach(visual);
 
-    // Anker aus Geometrie messen (klebt am Heck/Bug des geladenen GLB)
+    // Düsen: Geometrie-Exhaust-Erkennung (in der Öffnung), Katalog nur Twin/Scale-Hinweis
     const twinN = (catalogHint?.nozzles.length ?? 1) >= 2;
     const twinM = (catalogHint?.muzzles?.length ?? 0) >= 2 || twinN;
     const auto = computeFxAnchors(visual, this.object, {
       twinNozzles: twinN,
       twinMuzzles: twinM,
+      catalogNozzles: catalogHint?.nozzles?.map((v) => v.clone()),
+      catalogNozzleScale: catalogHint?.nozzleScale,
     });
 
-    // Düsen: Katalog ist am echten GLB kalibriert (autoritativ).
-    // Hardpoints: IMMER aus Geometrie (Flügel-Unterseite) — Katalog-Y lag oft
-    // 0.5–1.5 m zu hoch und setzte Raketen auf die Flügeloberkante.
-    if (catalogHint?.nozzles.length) {
-      auto.nozzles = catalogHint.nozzles.map((v) => v.clone());
-    }
-    if (catalogHint?.nozzleScale) auto.nozzleScale = catalogHint.nozzleScale;
     if (catalogHint?.wingHalfSpan) {
       auto.wingHalfSpan = catalogHint.wingHalfSpan;
     }
@@ -150,7 +145,7 @@ export abstract class Aircraft {
       this.engineFx.group.visible = false;
     } else {
       this.engineFx.group.visible = true;
-      this.engineFx.configure(auto.nozzles, auto.nozzleScale);
+      this.engineFx.configure(auto.nozzles, auto.nozzleScale, auto.nozzleRadii);
     }
 
     this.contrails = new Contrails(this.object, auto.wingHalfSpan);

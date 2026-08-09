@@ -195,8 +195,8 @@ export const JET_CATALOG: JetDef[] = [
       label: 'M61 Vulcan',
       detail: 'Hohe Feuerrate, präzise Dogfight-Kanone',
     },
-    // y auf -0.05 gesetzt (Zentrum nahe Düsenebene, wie in Aircraft-Konstruktor)
-    fx: singleNozzle(-0.05, 7.42, 0.95, 6.5, [
+    // Düse: Geometrie misst final; Katalog = Twin/Scale-Hinweis + weiche Bias
+    fx: singleNozzle(-0.15, 7.15, 0.72, 6.5, [
       [-3.0, -0.4, -1.5], [3.0, -0.4, -1.5],   // Wingtip
       [-2.2, -0.45, -1.2], [2.2, -0.45, -1.2],  // Mid-wing
       [-1.4, -0.5, -0.8], [1.4, -0.5, -0.8],    // Inner wing
@@ -235,7 +235,7 @@ export const JET_CATALOG: JetDef[] = [
       label: 'AMRAAM Suite',
       detail: 'Schneller Lock, große Reichweite',
     },
-    fx: singleNozzle(-0.1, 7.00, 1.0, 6.3, [
+    fx: singleNozzle(-0.22, 7.05, 0.75, 6.3, [
       [-2.9, -0.35, -1.4], [2.9, -0.35, -1.4],
       [-2.1, -0.4, -1.1], [2.1, -0.4, -1.1],
       [-1.3, -0.45, -0.7], [1.3, -0.45, -0.7],
@@ -359,7 +359,7 @@ export const JET_CATALOG: JetDef[] = [
       label: 'Rail-Burst + Flares',
       detail: 'Wuchtige Schüsse, enge Streuung · X = Flares gegen SAMs',
     },
-    fx: twinNozzle(0.72, -0.5, 7.35, 0.78, 6.2, [
+    fx: twinNozzle(0.78, -0.42, 7.15, 0.72, 6.2, [
       [-2.9, -0.4, -1.5], [2.9, -0.4, -1.5],
       [-2.1, -0.45, -1.2], [2.1, -0.45, -1.2],
       [-1.3, -0.5, -0.8], [1.3, -0.5, -0.8],
@@ -445,7 +445,8 @@ export const JET_CATALOG: JetDef[] = [
       label: 'Strike Loadout',
       detail: 'Viele Raketen, robuste Zelle',
     },
-    fx: twinNozzle(1.0, -0.38, 4.78, 0.88, 7.8, [
+    // Twin-Düsen eng unter dem Rumpf (nicht flügelweit)
+    fx: twinNozzle(0.72, -0.52, 10.15, 0.7, 7.8, [
       [-3.6, -0.4, -1.8], [3.6, -0.4, -1.8],
       [-2.7, -0.45, -1.5], [2.7, -0.45, -1.5],
       [-1.8, -0.5, -1.2], [1.8, -0.5, -1.2],
@@ -486,7 +487,8 @@ export const JET_CATALOG: JetDef[] = [
       label: 'Supermaneuver + Flares',
       detail: 'Hohe Wendigkeit · X = Flares gegen SAMs (50/50 Spoof)',
     },
-    fx: twinNozzle(1.0, -0.3, 6.30, 0.84, 7.2, [
+    // Twin AL-41F: enger am Rumpf als Geometrie-Heckbreite vermuten lässt
+    fx: twinNozzle(0.95, -0.28, 6.45, 0.78, 7.2, [
       [-3.3, -0.35, -1.6], [3.3, -0.35, -1.6],
       [-2.5, -0.4, -1.3], [2.5, -0.4, -1.3],
       [-1.6, -0.45, -0.9], [1.6, -0.45, -0.9],
