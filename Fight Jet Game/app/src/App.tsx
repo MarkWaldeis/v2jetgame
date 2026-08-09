@@ -18,7 +18,8 @@ const initialHud: HudData = {
   state: 'menu',
   speedKnots: 0, altitudeFt: 0, headingDeg: 0, throttle: 0.6,
   afterburner: false, stalled: false, freeLook: false, autoTrack: false, gForce: 1,
-  hp: 100, maxHp: 100, score: 0, missiles: 6, flares: 0, maxFlares: 0, flareActive: false, enemiesAlive: 4,
+  hp: 100, maxHp: 100, score: 0, missiles: 6, weaponLabel: 'AIM-9 Sidewinder',
+  flares: 0, maxFlares: 0, flareActive: false, enemiesAlive: 4,
   lockProgress: 0, lockedTargetName: null, lockScreen: null, warning: null, radar: [],
   mouseReticle: { x: 50, y: 50, visible: false },
   velocityVector: { x: 50, y: 50, visible: false },
@@ -34,6 +35,7 @@ const initialHud: HudData = {
   damage: {
     hullPct: 100,
     status: 'NOMINAL',
+    panelTitle: 'AIRFRAME',
     systems: [
       { name: 'ENGINE', ok: true },
       { name: 'FLIGHT CTRL', ok: true },
@@ -146,6 +148,7 @@ export default function App() {
     const s = loadSettings();
     game.setSoundMuted(s.muted);
     game.setSoundVolume(s.masterVolume);
+    game.applySettings({ graphicsQuality: s.graphicsQuality });
 
     return () => game.dispose();
   }, [updatePhase]);
@@ -153,6 +156,10 @@ export default function App() {
   const onSoundChange = useCallback((s: { muted: boolean; volume: number }) => {
     gameRef.current?.setSoundMuted(s.muted);
     gameRef.current?.setSoundVolume(s.volume);
+  }, []);
+
+  const onGraphicsChange = useCallback((quality: 'low' | 'medium' | 'high') => {
+    gameRef.current?.applySettings({ graphicsQuality: quality });
   }, []);
 
   const onStart = useCallback(async (id: JetId) => {
@@ -405,6 +412,7 @@ export default function App() {
             updatePhase('menu');
           }}
           onSoundChange={onSoundChange}
+          onGraphicsChange={onGraphicsChange}
           aeroCredits={credits}
           onPurchaseJet={onPurchaseJet}
           onStartCampaign={onStartCampaign}

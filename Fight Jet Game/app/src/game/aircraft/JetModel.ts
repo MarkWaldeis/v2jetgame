@@ -44,7 +44,8 @@ function roundelTexture(nation: 'us' | 'enemy'): THREE.CanvasTexture {
     for (let i = 0; i < 5; i++) {
       const a = -Math.PI / 2 + (i * 4 * Math.PI) / 5;
       const px = cx + Math.cos(a) * 58, py = cy + Math.sin(a) * 58;
-      i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+      if (i === 0) x.moveTo(px, py);
+      else x.lineTo(px, py);
     }
     x.closePath(); x.fill();
   } else {
@@ -57,7 +58,8 @@ function roundelTexture(nation: 'us' | 'enemy'): THREE.CanvasTexture {
     for (let i = 0; i < 5; i++) {
       const a = -Math.PI / 2 + (i * 4 * Math.PI) / 5;
       const px = cx + Math.cos(a) * 56, py = cy + Math.sin(a) * 56;
-      i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+      if (i === 0) x.moveTo(px, py);
+      else x.lineTo(px, py);
     }
     x.closePath(); x.fill();
   }

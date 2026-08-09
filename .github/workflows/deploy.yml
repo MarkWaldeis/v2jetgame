@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -34,18 +34,19 @@ jobs:
         env:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
+      - name: Lint
+        working-directory: Fight Jet Game/app
+        run: npm run lint
+
+      - name: Typecheck
+        working-directory: Fight Jet Game/app
+        run: npm run typecheck
+
       - name: Build Vite App
         working-directory: Fight Jet Game/app
         run: npm run build
 
-      - name: Deploy to gh-pages branch
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./Fight Jet Game/app/dist
-          force_orphan: true
-
-      - name: Upload artifact for GitHub Actions Pages
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: Fight Jet Game/app/dist

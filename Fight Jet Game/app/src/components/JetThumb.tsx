@@ -5,7 +5,17 @@ import { JetSilhouette } from './JetIcons';
 import type { JetFaction } from '../game/aircraft/JetCatalog';
 
 /** Hangar card image: real GLB render thumbnail with silhouette fallback. */
-export function JetThumb({
+export function JetThumb(props: {
+  jetId: JetId;
+  faction: JetFaction;
+  locked?: boolean;
+  className?: string;
+}) {
+  // key remountet bei Jet-Wechsel → kein setState-sync im Effect
+  return <JetThumbInner key={props.jetId} {...props} />;
+}
+
+function JetThumbInner({
   jetId,
   faction,
   locked = false,
@@ -21,13 +31,7 @@ export function JetThumb({
 
   useEffect(() => {
     let alive = true;
-    setFailed(false);
-    const peek = peekJetThumbnail(jetId);
-    if (peek) {
-      setSrc(peek);
-      return;
-    }
-    setSrc(null);
+    if (peekJetThumbnail(jetId)) return;
     getJetThumbnail(jetId)
       .then((url) => {
         if (alive) setSrc(url);

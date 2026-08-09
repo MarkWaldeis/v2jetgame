@@ -21,7 +21,7 @@ export type ModelOrient = {
 
 export interface LoadJetOptions {
   orient?: ModelOrient;
-  /** Ziel‑Rumpflänge in Metern (Props ~9–11 m, Jets ~15 m) */
+  /** Ziel‑Rumpflänge in Metern (Props ~9–11 m, Jets ~15 m) */
   targetLength?: number;
 }
 
@@ -57,9 +57,11 @@ export async function loadJetGlb(
 
   // Lichter entfernen; Fahrwerk + mitgelieferte Waffen ausblenden
   // (Loadout kommt aus missileRack — doppelte Mesh-Raketen vermeiden)
-  const gearRe = /gear|wheel|tire|tyre|landing|baydoor|bay_door|strut|oleo/i;
+  // Airborne-Start: Fahrwerk + mitgelieferte Stores ausblenden (Name-Heuristik)
+  const gearRe =
+    /gear|wheel|tire|tyre|landing|baydoor|bay_door|strut|oleo|undercarriage|lg_?(door|bay)|nose_?gear|main_?gear|mlg|nlg/i;
   const weaponRe =
-    /missile|aim[-_ ]?9|aim[-_ ]?120|sidewinder|amraam|phoenix|sparrow|r[-_ ]?77|r[-_ ]?73|r[-_ ]?27|rocket|bomb|ordnance|weapon_?rack|pylon.*store|fuel_?tank|droptank|drop_?tank/i;
+    /missile|aim[-_ ]?9|aim[-_ ]?120|sidewinder|amraam|phoenix|sparrow|r[-_ ]?77|r[-_ ]?73|r[-_ ]?27|rocket|bomb|ordnance|weapon_?rack|pylon.*store|fuel_?tank|droptank|drop_?tank|external_?tank|gbu|agm|mk[-_ ]?82/i;
   rawRoot.traverse((obj) => {
     if ((obj as THREE.Light).isLight) {
       obj.parent?.remove(obj);
@@ -85,7 +87,7 @@ export async function loadJetGlb(
   });
 
   // Sketchfab/FBX: Freirotationen an Mesh‑Parents neutralisieren
-  // (z. B. Spitfire Object001 r=-111,-29,-38) — Geometrie selbst ist oft korrekt.
+  // (z. B. Spitfire Object001 r=-111,-29,-38) — Geometrie selbst ist oft korrekt.
   neutralizeFreeformPose(rawRoot);
 
   // Hierarchie flach backen — eliminiert Rest‑Node‑Transforms zuverlässig
@@ -182,7 +184,7 @@ export async function loadJetGlb(
 
 /**
  * Sketchfab/FBX‑Exports speichern oft eine "Präsentationspose" als freie
- * Multi‑Achsen‑Euler‑Rotation am Mesh‑Parent (z. B. Spitfire Object001
+ * Multi‑Achsen‑Euler‑Rotation am Mesh‑Parent (z. B. Spitfire Object001
  * r=−111,−29,−38). Die Mesh‑Geometrie selbst ist dann oft korrekt.
  *
  * Wir setzen nur Multi‑Achsen‑Freirotationen zurück.

@@ -222,7 +222,7 @@ export function Hud({ data }: { data: HudData }) {
                   hullPct > 50 ? 'rgba(159,216,74,0.22)' : 'rgba(255,59,48,0.45)',
               }}
             >
-              <div className="hud-label">Airframe</div>
+              <div className="hud-label">{dmg?.panelTitle ?? 'AIRFRAME'}</div>
               <div className="mt-0.5 text-sm font-bold" style={{ color: hullTone }}>
                 {dmg?.status ?? 'NOMINAL'}
               </div>
@@ -539,7 +539,9 @@ export function Hud({ data }: { data: HudData }) {
             <div className="hud-glass-pill min-w-[150px]">
               <div className="hud-label">Score</div>
               <div className="hud-value text-3xl">{data.score}</div>
-              <div className="mt-2 text-xs text-white/50">AIM-9 × {data.missiles}</div>
+              <div className="mt-2 text-xs text-white/50">
+                {data.weaponLabel ?? 'MISSILE'} × {data.missiles}
+              </div>
               {/* Kanonen-Munition + Reload */}
               <div
                 className="mt-1 text-xs font-semibold tracking-wide"

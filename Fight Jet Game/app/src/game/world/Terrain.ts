@@ -3,7 +3,7 @@ import { CONFIG } from '../config';
 
 // Kleines, schnelles Value-Noise (deterministisch, kein Seed nötig)
 function hash(x: number, y: number): number {
-  let h = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  const h = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
   return h - Math.floor(h);
 }
 function smooth(t: number): number {

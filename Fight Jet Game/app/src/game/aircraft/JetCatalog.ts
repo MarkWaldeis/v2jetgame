@@ -59,6 +59,13 @@ export interface FlightPhysicsProfile {
   modelLengthM?: number;
 }
 
+/** Spieler-Raketen-Loadout (Label + Sucher + Visual + Flugprofil) */
+export interface JetMissileLoadout {
+  id: string;
+  label: string;
+  seekerType: 'ir' | 'arh' | 'sam';
+}
+
 export interface JetDef {
   id: JetId;
   faction: JetFaction;
@@ -93,6 +100,8 @@ export interface JetDef {
     lockAngleDeg: number;
     flareCount: number;
   };
+  /** Lenkwaffe für HUD und MissileCatalog */
+  missile: JetMissileLoadout;
   special: {
     id: string;
     label: string;
@@ -178,14 +187,15 @@ export const JET_CATALOG: JetDef[] = [
       lockRange: 2500,
       lockTime: 1.35,
       lockAngleDeg: 18,
-      flareCount: 0, // Flares nur auf Top-Tier (Elite / Su-57)
+      flareCount: 10,
     },
+    missile: { id: 'aim9', label: 'AIM-9 Sidewinder', seekerType: 'ir' },
     special: {
       id: 'vulcan',
       label: 'M61 Vulcan',
       detail: 'Hohe Feuerrate, präzise Dogfight-Kanone',
     },
-    // y auf -0.05 gesetzt (Zentrum nahe Düsenebene, wie in Aircraft‑Konstruktor)
+    // y auf -0.05 gesetzt (Zentrum nahe Düsenebene, wie in Aircraft-Konstruktor)
     fx: singleNozzle(-0.05, 7.42, 0.95, 6.5, [
       [-3.0, -0.4, -1.5], [3.0, -0.4, -1.5],   // Wingtip
       [-2.2, -0.45, -1.2], [2.2, -0.45, -1.2],  // Mid-wing
@@ -217,8 +227,9 @@ export const JET_CATALOG: JetDef[] = [
       lockRange: 3800,
       lockTime: 0.85,
       lockAngleDeg: 22,
-      flareCount: 0,
+      flareCount: 12,
     },
+    missile: { id: 'aim120', label: 'AIM-120 AMRAAM', seekerType: 'arh' },
     special: {
       id: 'amraam',
       label: 'AMRAAM Suite',
@@ -256,8 +267,9 @@ export const JET_CATALOG: JetDef[] = [
       lockRange: 4200,
       lockTime: 1.0,
       lockAngleDeg: 16,
-      flareCount: 0,
+      flareCount: 10,
     },
+    missile: { id: 'aim54', label: 'AIM-54 Phoenix', seekerType: 'arh' },
     special: {
       id: 'phoenix',
       label: 'AIM-54 Phoenix',
@@ -301,8 +313,9 @@ export const JET_CATALOG: JetDef[] = [
       lockRange: 1800,
       lockTime: 1.5,
       lockAngleDeg: 20,
-      flareCount: 0,
+      flareCount: 8,
     },
+    missile: { id: 'aim9', label: 'AIM-9 Sidewinder', seekerType: 'ir' },
     special: {
       id: 'trainer',
       label: 'Light Frame',
@@ -338,9 +351,9 @@ export const JET_CATALOG: JetDef[] = [
       lockRange: 2200,
       lockTime: 1.1,
       lockAngleDeg: 14,
-      // Bestes NATO-Jet: volle Flare-Last (WT-Gegenmaßnahmen)
       flareCount: 24,
     },
+    missile: { id: 'aim9', label: 'AIM-9 Sidewinder', seekerType: 'ir' },
     special: {
       id: 'railburst',
       label: 'Rail-Burst + Flares',
@@ -386,8 +399,9 @@ export const JET_CATALOG: JetDef[] = [
       lockRange: 2000,
       lockTime: 1.6,
       lockAngleDeg: 20,
-      flareCount: 0,
+      flareCount: 12,
     },
+    missile: { id: 'r73', label: 'R-73', seekerType: 'ir' },
     special: {
       id: 'armor',
       label: 'Titanwanne',
@@ -423,8 +437,9 @@ export const JET_CATALOG: JetDef[] = [
       lockRange: 3200,
       lockTime: 1.1,
       lockAngleDeg: 18,
-      flareCount: 0,
+      flareCount: 12,
     },
+    missile: { id: 'r77', label: 'R-77', seekerType: 'arh' },
     special: {
       id: 'strike',
       label: 'Strike Loadout',
@@ -463,9 +478,9 @@ export const JET_CATALOG: JetDef[] = [
       lockRange: 3600,
       lockTime: 0.9,
       lockAngleDeg: 20,
-      // Bestes Russland-Jet: volle Flare-Last (WT-Gegenmaßnahmen)
       flareCount: 24,
     },
+    missile: { id: 'r77', label: 'R-77', seekerType: 'arh' },
     special: {
       id: 'supermaneuver',
       label: 'Supermaneuver + Flares',

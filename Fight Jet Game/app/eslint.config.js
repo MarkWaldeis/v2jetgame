@@ -6,7 +6,15 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores([
+    'dist',
+    'node_modules',
+    // Unbenutzte shadcn-Template-Komponenten (nicht im Spiel verwendet)
+    'src/components/ui/**',
+    // Puppeteer-/Diagnose-Skripte
+    '*.mjs',
+    '*.mts',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

@@ -62,6 +62,14 @@ export class Sky {
   }
 
   private cloudMat: THREE.MeshBasicMaterial | null = null;
+  /** Anzahl Wolken-Billboards (Grafikprofil) */
+  private cloudCount = 30;
+
+  /** Grafikprofil: weniger Wolken auf Low */
+  setCloudBudget(count: number) {
+    this.cloudCount = Math.max(4, Math.min(40, Math.round(count)));
+    this.rebuildClouds(this.worldSize);
+  }
 
   /** Wolken an neue Weltgröße anpassen (Map-Wechsel) */
   rebuildClouds(worldSize: number) {
@@ -77,7 +85,7 @@ export class Sky {
       });
     }
     const half = worldSize / 2 - 500;
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < this.cloudCount; i++) {
       const a = Sky.seeded(i, 3), b = Sky.seeded(i, 7);
       const c = Sky.seeded(i, 11), d = Sky.seeded(i, 17);
       const w = 1000 + a * 1800;

@@ -71,6 +71,7 @@ export function Menus({
   onResume,
   onMenu,
   onSoundChange,
+  onGraphicsChange,
   aeroCredits,
   onPurchaseJet,
   onStartCampaign,
@@ -85,6 +86,7 @@ export function Menus({
   onResume: () => void;
   onMenu: () => void;
   onSoundChange?: (s: { muted: boolean; volume: number }) => void;
+  onGraphicsChange?: (quality: 'low' | 'medium' | 'high') => void;
   aeroCredits: number;
   onPurchaseJet: (jetId: string, price: number) => boolean;
   onStartCampaign?: (levelId: string, jetId: JetId) => void;
@@ -131,7 +133,8 @@ export function Menus({
   useEffect(() => {
     saveSettings(settings);
     onSoundChange?.({ muted: settings.muted, volume: settings.masterVolume });
-  }, [settings, onSoundChange]);
+    onGraphicsChange?.(settings.graphicsQuality);
+  }, [settings, onSoundChange, onGraphicsChange]);
 
   // Nur beim echten Wechsel ZURÜCK ins Menü auf Home springen — nicht bei jedem Render
   useEffect(() => {
@@ -1089,6 +1092,11 @@ export function Menus({
                       <div className="mission-card-nr">{String(level.index).padStart(2, '0')}</div>
                       <div className="mission-card-name">{level.codename}</div>
                       <p className="mission-card-desc">{level.description}</p>
+                      {level.primaryObjective && (
+                        <p className="mt-1 text-[11px] leading-snug text-white/40">
+                          Ziel: {level.primaryObjective}
+                        </p>
+                      )}
                       <div className="mt-2 flex flex-wrap gap-1">
                         <span className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-200/70">
                           {mapName}

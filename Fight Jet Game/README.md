@@ -47,7 +47,9 @@ Lock-On funktioniert auf Luft- **und** Bodenziele. Sieg = alle Wellen geschafft.
 | Tab (oder Vollschub) | WEP / Nachbrenner (~110 %) |
 | B | Luftbremse |
 | Leertaste | Bordkanone |
-| F oder M | AIM-9-Rakete (nach Lock-On) |
+| F oder M | Lenkwaffe nach Lock-On (Label im HUD je Jet) |
+| **R** | Kanonen nachladen |
+| **X** / **Z** | Flares |
 | **C halten** oder **RMB** | Free-Look (Orbit); Jet behält Kurs |
 | V | Cockpit- / Chase-Kamera |
 | P / Esc | Pause |

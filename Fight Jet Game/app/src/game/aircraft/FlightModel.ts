@@ -448,7 +448,7 @@ export class FlightModel {
 
     // Yaw nur Feinkorrektur (Seitenruder), nicht Hauptsteuerung
     const yawWeight = 1 - sideWeight * 0.75 * rollFirst;
-    let yawCmd = THREE.MathUtils.clamp(-yawErr * F.fbwYawGain * yawWeight, -0.55, 0.55);
+    const yawCmd = THREE.MathUtils.clamp(-yawErr * F.fbwYawGain * yawWeight, -0.55, 0.55);
 
     // Fast aligned horizontal → Bank glätten
     if (yawAbs < 0.1) {

@@ -1,15 +1,18 @@
 {
-  "name": "my-app",
+  "name": "fight-jet-3d",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0-rc.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --pretty false",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:map": "node map-test.mjs",
-    "test:map-visual": "node map-visual-test.mjs"
+    "test:map-visual": "node map-visual-test.mjs",
+    "test:smoke": "node smoke-test.mjs",
+    "test:assets": "node hangar-test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

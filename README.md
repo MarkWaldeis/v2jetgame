@@ -1,35 +1,40 @@
-# 🛩️ Fight Jet 3D — v2
+# Fight Jet 3D — v2
 
-Browserbasiertes 3D-Kampfjet-Spiel (War-Thunder-inspiriert): F-16 „Viper" im USAF-Look
-fliegen, 3-Wellen-Mission mit KI-Bandits und SEAD gegen SAM-Stellungen, Bordkanone +
-AIM-9 mit Lock-On, Nachbrenner, Cockpit-Interior und Avionik-HUD.
+Browserbasiertes 3D-Kampfjet-Spiel (Singleplayer Campaign): acht Jets, zwei Karten, Kanone + Lenkwaffen, SAM/AAA, Flares, Hangar und lokale Progression.
 
-## ▶️ Direkt spielen
+## Direkt spielen
 
 **[https://markwaldeis.github.io/v2jetgame/](https://markwaldeis.github.io/v2jetgame/)**
 
-Einfach im Browser öffnen — kein Download, keine Installation. Läuft auf Desktop-Browsern
-mit WebGL (Chrome, Edge, Firefox empfohlen).
-
----
+Desktop-Browser mit WebGL (Chrome, Edge, Firefox). Kein Download nötig.
 
 ## Projektstruktur
 
 | Ordner | Inhalt |
 |---|---|
 | `Fight Jet Game/app` | Haupt-App (Three.js + React + TypeScript + Vite) |
-| `Fight Jet Game/archived-aircraft` | Archivierte Flugzeug-Modelle |
-| `Neue Schlechtere Flugzeuge` | Referenzmaterial |
+| `Fight Jet Game/archived-aircraft` | Archivierte Legacy-Modelle |
+| `V2_JET_GAME_AI_ANALYSEBERICHT.md` | Reife- und Umsetzungsbericht |
 
-Details, Steuerung und Features: [Fight Jet Game/README.md](Fight%20Jet%20Game/README.md)
+Details, Steuerung und Scripts: [Fight Jet Game/app/README.md](Fight%20Jet%20Game/app/README.md)
 
 ## Entwicklung
 
 ```bash
 cd "Fight Jet Game/app"
 npm install
-npm run dev      # http://localhost:3000
-npm run build    # Produktions-Build → app/dist
+npm run dev
+npm run lint
+npm run typecheck
+npm run build
 ```
 
-Deployment: `gh-pages`-Branch → GitHub Pages.
+Deployment: GitHub Actions → **GitHub Pages** (offizieller Artifact/Deploy-Pfad, ein Workflow).
+
+## Steuerung (Kurz)
+
+Maus-Aim · WASD · Leertaste Kanone · F/M Rakete · **R** Reload · **X/Z** Flares · **V** Cockpit · **C**/RMB Free-Look · P/Esc Pause
+
+## Credits / Hinweise
+
+Spielcode und UI: Projekt „v2jetgame“. Externe GLB-Flugzeug-/Waffenmodelle unterliegen den Lizenzen ihrer Quellen. Keine realen Militärdaten — Arcade-Flight-Combat.

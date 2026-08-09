@@ -123,6 +123,8 @@ export class Effects {
   private cSpark = new THREE.Color(1, 0.8, 0.3);
   private flarePellets: FlarePellet[] = [];
   private flareCursor = 0;
+  /** 0.35–1.0: skaliert Partikel-Anzahlen (Grafikprofil) */
+  private particleScale = 1;
   /** Gestaffelte Salven: Flares nacheinander auswerfen */
   private flareQueue: {
     t: number;
@@ -137,6 +139,15 @@ export class Effects {
   constructor() {
     this.group.add(this.pool.points);
     this.initFlarePellets();
+  }
+
+  /** Low = 0.4, Medium = 0.7, High = 1 */
+  setParticleScale(scale: number) {
+    this.particleScale = Math.max(0.25, Math.min(1, scale));
+  }
+
+  private scaledCount(n: number): number {
+    return Math.max(1, Math.round(n * this.particleScale));
   }
 
   private initFlarePellets() {
@@ -201,7 +212,7 @@ export class Effects {
   }
 
   explosion(pos: THREE.Vector3, big = false) {
-    const n = big ? 40 : 22;
+    const n = this.scaledCount(big ? 40 : 22);
     const spread = big ? 60 : 30;
     for (let i = 0; i < n; i++) {
       const dir = new THREE.Vector3().randomDirection();

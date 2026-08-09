@@ -14,6 +14,7 @@ import {
   cloneMissileVisual,
   missileIdForJet,
 } from './combat/MissileVisuals';
+import { missileDefForJet, getMissileDef } from './combat/MissileCatalog';
 import { Effects } from './combat/Effects';
 import { SamSite, AaaTruck, type Damageable } from './combat/GroundTarget';
 import {
@@ -28,6 +29,7 @@ import { getJetDef, jetFxVectors, JET_CATALOG, legacyJetIds, type JetId } from '
 import { getMapDef, type MapId } from './world/MapCatalog';
 import { GlbMapTerrain, loadGlbMap, type HeightField } from './world/GlbMapTerrain';
 import { WindField } from './aircraft/WindAndFlutter';
+import type { GraphicsQuality } from '../lib/gameSettings';
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'gameover' | 'victory';
 
@@ -48,6 +50,8 @@ export interface HudData {
   maxHp: number;
   score: number;
   missiles: number;
+  /** Anzeige der aktiven Lenkwaffe (AIM-9, AMRAAM, R-77, …) */
+  weaponLabel: string;
   /** Verbleibende Flares (0 = keine / Jet hat keine) */
   flares: number;
   maxFlares: number;
@@ -97,10 +101,15 @@ export interface HudData {
     locked: boolean;
     visible: boolean;
   }[];
-  /** Strukturierter Schaden für Damage-Panel */
+  /**
+   * Airframe-Schaden (Subsysteme leiten sich aus Rumpf-HP ab,
+   * haben aber echte Spielwirkung: Schub/Steuerung/Radar/Waffen).
+   */
   damage: {
     hullPct: number;
     status: string;
+    /** ehrlich: „Airframe“ statt simulierte Trefferzonen-Illusion */
+    panelTitle: string;
     systems: { name: string; ok: boolean }[];
   };
   // Mission
@@ -209,13 +218,32 @@ export class Game {
     this.loop = new GameLoop(this.update, this.render);
     this.loop.start();
 
-    // Default-Jet im Hangar vorladen + alle Katalog-Jets für die Gegner
+    // Nur Standardjet + dessen Raketen-Visual vorladen (Lazy Loading, P0-5)
     void this.ensureJetVisual(this.selectedJetId);
-    for (const j of JET_CATALOG) void this.loadJetTemplate(j.id);
-    // 3D-Raketen-Visuals (AIM-9, AIM-120, R-77)
-    void preloadMissileVisual('aim9');
-    void preloadMissileVisual('aim120');
-    void preloadMissileVisual('r77');
+    void preloadMissileVisual(missileIdForJet(this.selectedJetId));
+  }
+
+  /**
+   * Grafikprofil anwenden (ohne Reload): Pixelratio, Wolken, Partikel, Sichtweite.
+   * Low / Medium / High.
+   */
+  applySettings(settings: { graphicsQuality: GraphicsQuality }) {
+    const q = settings.graphicsQuality;
+    let fogScale = 1;
+    let clouds = 30;
+    let particles = 1;
+    if (q === 'low') {
+      fogScale = 0.55;
+      clouds = 10;
+      particles = 0.4;
+    } else if (q === 'medium') {
+      fogScale = 0.8;
+      clouds = 20;
+      particles = 0.7;
+    }
+    this.engine.applyGraphicsQuality(q, fogScale);
+    this.sky.setCloudBudget(clouds);
+    this.effects.setParticleScale(particles);
   }
 
   getSelectedJetId() {
@@ -916,7 +944,7 @@ export class Game {
           launchDir,
           site,
           this.effects,
-          { carrierSpeed: 40, profile: 'sam' }
+          { carrierSpeed: 40, profile: 'sam', missileDef: getMissileDef('sam_std') }
         );
         this.missiles.push(m);
         this.engine.scene.add(m.object);
@@ -1113,7 +1141,7 @@ export class Game {
     // Lead-Punkt (leichter Vorhalt) als Assist-Ziel
     const bulletSpeed = CONFIG.player.bulletSpeed;
     const dist = best.object.position.distanceTo(p.position);
-    let tHit = dist / bulletSpeed;
+    const tHit = dist / bulletSpeed;
     const targetVel = best.flight?.velocity
       ? best.flight.velocity.clone()
       : new THREE.Vector3();
@@ -1250,7 +1278,7 @@ export class Game {
     targetVel.multiplyScalar(0.82);
 
     // Iterativer Vorhalt: t = dist/v, lead = pos + vel*t
-    let lead = target.object.position.clone();
+    const lead = target.object.position.clone();
     let tHit = dist / bulletSpeed;
     for (let i = 0; i < 3; i++) {
       lead.copy(target.object.position).addScaledVector(targetVel, tHit);
@@ -1371,6 +1399,7 @@ export class Game {
     const m = new Missile(player, start, startDir, e, this.effects, {
       carrierSpeed: e.flight.speed,
       profile: 'enemy',
+      missileDef: getMissileDef('enemy_ir'),
     });
     this.missiles.push(m);
     this.engine.scene.add(m.object);
@@ -1404,10 +1433,11 @@ export class Game {
     });
     this.sound.flarePop();
 
-    // Spoof: jede eingehende Lenkwaffe hat ~50 % Chance, den Lock zu verlieren
-    const chance = CONFIG.player.flareSpoofChance ?? 0.5;
+    // Spoof: Basis-Chance × Raketen-Empfindlichkeit (IR hoch, ARH niedrig)
+    const baseChance = CONFIG.player.flareSpoofChance ?? 0.5;
     for (const m of this.missiles) {
       if (!m.targetIs(player)) continue;
+      const chance = Math.min(0.95, baseChance * (m.flareSpoofMult ?? 1));
       if (Math.random() < chance) {
         m.decoy();
       }
@@ -1422,6 +1452,7 @@ export class Game {
     const player = this.player;
     const target = player.lockTarget;
     if (!target?.alive || player.missilesLeft <= 0) return;
+    if (player.weaponsDisabled) return;
 
     player.missilesLeft--;
     const hardpoints = player.getHardpoints();
@@ -1445,13 +1476,15 @@ export class Game {
     // Start-Richtung: leicht nach vorne-unten (nicht exakt Nase)
     const startDir = player.forward.clone().addScaledVector(up, -0.08).normalize();
 
-    const visId = missileIdForJet(player.jetId);
+    const missileDef = missileDefForJet(player.jetId);
+    const visId = missileDef.visualId;
     const visual = cloneMissileVisual(visId);
 
     const m = new Missile(target, worldPos, startDir, player, this.effects, {
       visual,
       carrierSpeed: player.flight.speed,
       ejectWorld: eject,
+      missileDef,
     });
     this.missiles.push(m);
     this.engine.scene.add(m.object);
@@ -1609,6 +1642,8 @@ export class Game {
       }
     }
 
+    // Airframe-Zustände: aus Rumpf-HP, mit echten Multiplikatoren am Player
+    p.applyAirframeDamageState();
     const hullPct = Math.round((Math.max(0, p.hp) / Math.max(1, p.maxHp)) * 100);
     let dmgStatus = 'NOMINAL';
     if (hullPct <= 25) dmgStatus = 'CRITICAL';
@@ -1617,6 +1652,7 @@ export class Game {
     const damage: HudData['damage'] = {
       hullPct,
       status: dmgStatus,
+      panelTitle: 'AIRFRAME',
       systems: [
         { name: 'ENGINE', ok: hullPct > 20 },
         { name: 'FLIGHT CTRL', ok: hullPct > 35 },
@@ -1676,6 +1712,7 @@ export class Game {
       maxHp: p.maxHp,
       score: p.score,
       missiles: p.missilesLeft,
+      weaponLabel: p.loadout.missile?.label ?? missileDefForJet(p.jetId).label,
       flares: p.flaresLeft,
       maxFlares: p.maxFlares,
       flareActive: p.flareCloudTimer > 0.05,

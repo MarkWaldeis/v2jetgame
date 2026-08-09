@@ -15,27 +15,54 @@ export interface GameSettings {
   completedCampaignLevels: string[];
   /** Höchstes freigeschaltetes Level-Index (1–5) */
   campaignUnlockedMax: number;
+  /**
+   * Einmalige Migration: Dev-Credits (9_999_999) erkannt und zurückgesetzt.
+   * Verhindert wiederholte Resets.
+   */
+  economyMigratedV2?: boolean;
 }
 
 const KEY = 'fightjet3d.settings.v1';
 
 const INITIAL_OWNED = ['f16', 'su25'];
 
+/** Normaler Startwert für die Veröffentlichung */
+export const START_CREDITS = 1200;
+
+/** Schwelle, ab der gespeicherte Credits als alter Dev-Boost gelten */
+const DEV_CREDIT_THRESHOLD = 1_000_000;
+
+/** Wiederholungsbonus: Anteil der vollen Belohnung bei erneutem Level-Abschluss */
+export const REPEAT_REWARD_RATIO = 0.25;
+
 /**
- * TEMP / DEV: Sehr hohe Credits zum Testen aller Jets.
- * Später wieder auf einen normalen Startwert (z.B. 500–2000) setzen.
+ * Dev-Credits nur lokal, nie im Release-Default:
+ * - `?devCredits=1` in der URL, oder
+ * - localStorage-Flag `fightjet3d.devCredits=1` (nur in DEV-Build gesetzt)
  */
-export const DEV_TEST_CREDITS = 9_999_999;
+function isDevCreditBoostEnabled(): boolean {
+  try {
+    if (typeof window !== 'undefined') {
+      const q = new URLSearchParams(window.location.search);
+      if (q.get('devCredits') === '1' || q.get('devCredits') === 'true') return true;
+      if (localStorage.getItem('fightjet3d.devCredits') === '1') return true;
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
 
 export const DEFAULT_SETTINGS: GameSettings = {
   graphicsQuality: 'high',
   showHud: true,
   masterVolume: 0.85,
   muted: false,
-  aeroCredits: DEV_TEST_CREDITS,
+  aeroCredits: START_CREDITS,
   ownedJets: [...INITIAL_OWNED],
   completedCampaignLevels: [],
   campaignUnlockedMax: 1,
+  economyMigratedV2: true,
 };
 
 export function loadSettings(): GameSettings {
@@ -47,6 +74,23 @@ export function loadSettings(): GameSettings {
     if (!parsed.ownedJets || parsed.ownedJets.length === 0) {
       parsed.ownedJets = [...INITIAL_OWNED];
     }
+
+    let credits = Math.max(0, parsed.aeroCredits ?? START_CREDITS);
+    let economyMigratedV2 = parsed.economyMigratedV2 === true;
+
+    // Alter Dev-Boost (9_999_999): einmalig auf Startcredits zurücksetzen, Besitz behalten
+    if (!economyMigratedV2 && credits >= DEV_CREDIT_THRESHOLD) {
+      credits = START_CREDITS;
+      economyMigratedV2 = true;
+    } else if (!economyMigratedV2) {
+      economyMigratedV2 = true;
+    }
+
+    // Optionaler lokaler Debug-Boost (nie Default im Produkt)
+    if (isDevCreditBoostEnabled()) {
+      credits = Math.max(credits, 9_999_999);
+    }
+
     const result: GameSettings = {
       ...DEFAULT_SETTINGS,
       ...parsed,
@@ -57,14 +101,12 @@ export function loadSettings(): GameSettings {
         1,
         Math.min(5, parsed.campaignUnlockedMax ?? 1)
       ),
-      // TEMP: immer genug Credits für den gesamten Jet-Katalog
-      aeroCredits: Math.max(
-        DEV_TEST_CREDITS,
-        Math.max(0, parsed.aeroCredits ?? DEFAULT_SETTINGS.aeroCredits)
-      ),
+      aeroCredits: credits,
+      economyMigratedV2,
     };
-    // Persistiere den Dev-Credit-Boost, damit UI + Kauf sofort greifen
-    if ((parsed.aeroCredits ?? 0) < DEV_TEST_CREDITS) {
+
+    // Persistierte Migration, damit der Reset nicht bei jedem Laden greift
+    if (parsed.economyMigratedV2 !== true || (parsed.aeroCredits ?? 0) >= DEV_CREDIT_THRESHOLD) {
       try {
         localStorage.setItem(KEY, JSON.stringify(result));
       } catch {
@@ -111,14 +153,20 @@ export function isCampaignLevelCompleted(levelId: string): boolean {
   return loadSettings().completedCampaignLevels.includes(levelId);
 }
 
-/** Markiert Level als geschafft, schaltet nächstes frei, Credits gutschreiben */
+/**
+ * Markiert Level als geschafft, schaltet nächstes frei, Credits gutschreiben.
+ * Erstabschluss = volle Belohnung; Wiederholung = REPEAT_REWARD_RATIO.
+ * @returns neue Credit-Summe
+ */
 export function completeCampaignLevel(levelId: string, levelIndex: number, reward: number): number {
   const s = loadSettings();
-  if (!s.completedCampaignLevels.includes(levelId)) {
+  const firstClear = !s.completedCampaignLevels.includes(levelId);
+  if (firstClear) {
     s.completedCampaignLevels.push(levelId);
   }
   s.campaignUnlockedMax = Math.max(s.campaignUnlockedMax, Math.min(5, levelIndex + 1));
-  s.aeroCredits += reward;
+  const granted = firstClear ? reward : Math.round(reward * REPEAT_REWARD_RATIO);
+  s.aeroCredits += granted;
   saveSettings(s);
   return s.aeroCredits;
 }

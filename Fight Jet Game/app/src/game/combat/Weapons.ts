@@ -307,6 +307,8 @@ export type MissileLaunchOpts = {
   ejectWorld?: THREE.Vector3;
   /** Flugprofil — enemy/sam sind absichtlich langsamer (Flares möglich) */
   profile?: MissileProfileId;
+  /** Datengetriebenes Raketenprofil (bevorzugt gegenüber profile) */
+  missileDef?: import('./MissileCatalog').MissileDef | null;
 };
 
 type MissileTune = {
@@ -319,9 +321,27 @@ type MissileTune = {
   boostTime: number;
   leadGain: number;
   startBoost: number;
+  flareSpoofMult: number;
 };
 
-function resolveMissileTune(profile: MissileProfileId): MissileTune {
+function resolveMissileTune(
+  profile: MissileProfileId,
+  def?: import('./MissileCatalog').MissileDef | null
+): MissileTune {
+  if (def) {
+    return {
+      speed: def.speed,
+      life: def.life,
+      turnRate: def.turnRate,
+      damage: def.damage,
+      proximityRadius: def.proximityRadius,
+      lockLoseAngleDeg: def.lockLoseAngleDeg,
+      boostTime: def.boostTime,
+      leadGain: def.leadGain,
+      startBoost: def.startBoost,
+      flareSpoofMult: def.flareSpoofMult,
+    };
+  }
   const base = CONFIG.missile;
   if (profile === 'enemy' && base.enemy) {
     return {
@@ -334,6 +354,7 @@ function resolveMissileTune(profile: MissileProfileId): MissileTune {
       boostTime: base.enemy.boostTime,
       leadGain: base.enemy.leadGain,
       startBoost: base.enemy.startBoost,
+      flareSpoofMult: 1,
     };
   }
   if (profile === 'sam' && base.sam) {
@@ -347,6 +368,7 @@ function resolveMissileTune(profile: MissileProfileId): MissileTune {
       boostTime: base.sam.boostTime,
       leadGain: base.sam.leadGain,
       startBoost: base.sam.startBoost,
+      flareSpoofMult: 0.85,
     };
   }
   return {
@@ -359,6 +381,7 @@ function resolveMissileTune(profile: MissileProfileId): MissileTune {
     boostTime: base.boostTime ?? 1.6,
     leadGain: base.leadGain ?? 0.55,
     startBoost: 40,
+    flareSpoofMult: 1,
   };
 }
 
@@ -369,6 +392,8 @@ export class Missile {
   /** Für Radar / Threat-Display */
   readonly profile: MissileProfileId;
   readonly damage: number;
+  /** Flare-Empfindlichkeit (aus MissileDef) */
+  readonly flareSpoofMult: number;
   private vel: THREE.Vector3;
   private life: number;
   private age = 0;
@@ -398,8 +423,9 @@ export class Missile {
     opts: MissileLaunchOpts = {}
   ) {
     this.profile = opts.profile ?? 'player';
-    this.tune = resolveMissileTune(this.profile);
+    this.tune = resolveMissileTune(this.profile, opts.missileDef);
     this.damage = this.tune.damage;
+    this.flareSpoofMult = this.tune.flareSpoofMult;
     this.target = target;
     this.effects = effects;
     this.object.position.copy(start);
