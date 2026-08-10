@@ -5,6 +5,7 @@ import { EngineFx } from './EngineFx';
 import { computeFxAnchors, type FxAnchors } from './FxAnchors';
 import { PropellerSystem } from './PropellerSystem';
 import { WingFlutter } from './WindAndFlutter';
+import { LandingGearVisual } from './LandingGearVisual';
 import type { EngineType, FlightPhysicsProfile } from './JetCatalog';
 
 /** Chase-Cam-Anpassung je nach Modellgröße (wingspan / height). */
@@ -29,6 +30,7 @@ export abstract class Aircraft {
   readonly engineFx: EngineFx;
   /** Sichtbare Raketen am Jet; Stationen entsprechen getHardpoints(). */
   readonly missileRack = new THREE.Group();
+  readonly landingGear = new LandingGearVisual();
   private mountedMissiles: THREE.Object3D[] = [];
   private deathTimer = 0;
   private visual: THREE.Object3D;
@@ -75,6 +77,7 @@ export abstract class Aircraft {
     this.object.add(this.engineFx.group);
     this.missileRack.name = 'missileRack';
     this.object.add(this.missileRack);
+    this.object.add(this.landingGear.group);
 
     this.flight = new FlightModel(this.object);
     this.contrails = new Contrails(this.object);
@@ -163,6 +166,9 @@ export abstract class Aircraft {
     this.object.add(this.missileRack);
     this.missileRack.position.set(0, 0, 0);
     this.missileRack.quaternion.identity();
+    this.object.add(this.landingGear.group);
+    this.landingGear.group.position.set(0, 0, 0);
+    this.landingGear.group.quaternion.identity();
   }
 
   /**

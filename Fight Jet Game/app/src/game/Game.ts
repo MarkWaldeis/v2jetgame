@@ -523,6 +523,7 @@ export class Game {
     this.player.applyLoadout(def2);
     this.player.reset();
     this.player.resetMountedMissiles(this.player.missilesLeft);
+    this.placePlayerForMap();
     this.clearActors();
     this.waveIndex = 0;
     this.waveDelay = 0;
@@ -874,8 +875,18 @@ export class Game {
         aimDir: this.aimDir,
         mouseAim: !free && !this.input.manualOverride,
         freeLook: free,
+        waterLevel: getMapDef(this.selectedMapId).showSea ? CONFIG.world.seaLevel : null,
       }
     );
+
+    if (player.consumeLandedEvent()) {
+      player.rearmMissiles();
+      this.waveBanner = 'GELANDET · RAKETEN NACHGELADEN · B = BREMSE';
+      this.waveBannerTimer = 4.5;
+    } else if (player.consumeTookOffEvent()) {
+      this.waveBanner = 'ABGEHOBEN · FAHRWERK FÄHRT EIN';
+      this.waveBannerTimer = 3.5;
+    }
 
     if (free) {
       this.input.pitch = savedPitch;

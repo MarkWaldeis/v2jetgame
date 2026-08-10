@@ -66,6 +66,25 @@ export interface JetMissileLoadout {
   seekerType: 'ir' | 'arh' | 'sam';
 }
 
+/** Jet-spezifische Geometrie und Arcade-Grenzwerte für Start/Landung. */
+export interface JetLandingGearSpec {
+  noseMount: [number, number, number];
+  leftMainMount: [number, number, number];
+  rightMainMount: [number, number, number];
+  noseStrutLength: number;
+  mainStrutLength: number;
+  wheelRadius: number;
+  wheelWidth: number;
+  /** Abstand des Jet-Ursprungs zur Bodenfläche bei ausgefahrenem Fahrwerk. */
+  groundClearance: number;
+  /** Geschwindigkeit in m/s, ab der mit positivem Pitch abgehoben wird. */
+  takeoffSpeed: number;
+  /** Maximale Arcade-Aufsetzgeschwindigkeit in m/s. */
+  landingSpeed: number;
+  /** Fahrwerksweg pro Sekunde (0..1). */
+  retractSpeed: number;
+}
+
 export interface JetDef {
   id: JetId;
   faction: JetFaction;
@@ -102,6 +121,7 @@ export interface JetDef {
   };
   /** Lenkwaffe für HUD und MissileCatalog */
   missile: JetMissileLoadout;
+  landingGear: JetLandingGearSpec;
   special: {
     id: string;
     label: string;
@@ -172,6 +192,19 @@ export const JET_CATALOG: JetDef[] = [
       'Der agile Multirole-Klassiker. Gute Wendigkeit, M61 Vulcan und Sidewinder. Ideal zum Einsteigen.',
     modelUrl: './models/player-jet.glb',
     price: 0,
+    landingGear: {
+      noseMount: [0, -0.42, -4.9],
+      leftMainMount: [-1.45, -0.48, 0.8],
+      rightMainMount: [1.45, -0.48, 0.8],
+      noseStrutLength: 2.3,
+      mainStrutLength: 2.23,
+      wheelRadius: 0.3,
+      wheelWidth: 0.2,
+      groundClearance: 3.03,
+      takeoffSpeed: 62,
+      landingSpeed: 82,
+      retractSpeed: 2.1,
+    },
     traits: ['Wendig', 'Vulcan', '6× AIM-9'],
     era: 'modern',
     engineType: 'jet',
@@ -212,6 +245,19 @@ export const JET_CATALOG: JetDef[] = [
       'Tarnkappen-Jäger der 5. Generation. Starke Sensoren und BVR-Raketen, in engen Kurven etwas träger.',
     modelUrl: './models/f35.glb',
     price: 1800,
+    landingGear: {
+      noseMount: [0, -0.5, -4.6],
+      leftMainMount: [-1.65, -0.56, 0.75],
+      rightMainMount: [1.65, -0.56, 0.75],
+      noseStrutLength: 1.42,
+      mainStrutLength: 1.34,
+      wheelRadius: 0.32,
+      wheelWidth: 0.22,
+      groundClearance: 2.22,
+      takeoffSpeed: 66,
+      landingSpeed: 86,
+      retractSpeed: 2.4,
+    },
     traits: ['Stealth', 'BVR-Lock', '8× AMRAAM'],
     era: 'modern',
     engineType: 'jet',
@@ -252,6 +298,19 @@ export const JET_CATALOG: JetDef[] = [
       'Navy-Legende mit Schwenkflügeln und AIM-54 Phoenix. Sehr schnell in gerader Linie, schwer und träge in engen Turns.',
     modelUrl: './models/f14.glb',
     price: 2500,
+    landingGear: {
+      noseMount: [0, -0.58, -6.25],
+      leftMainMount: [-2.25, -0.62, 1.2],
+      rightMainMount: [2.25, -0.62, 1.2],
+      noseStrutLength: 1.66,
+      mainStrutLength: 1.62,
+      wheelRadius: 0.38,
+      wheelWidth: 0.27,
+      groundClearance: 2.62,
+      takeoffSpeed: 72,
+      landingSpeed: 92,
+      retractSpeed: 1.7,
+    },
     traits: ['Phoenix BVR', 'Twin TF30', 'Carrier'],
     era: 'modern',
     engineType: 'jet',
@@ -291,6 +350,19 @@ export const JET_CATALOG: JetDef[] = [
       'Leichter Trainer/Angriffsjet. Langsam, aber wendig und übersichtlich — gut für Anfänger und Bodenziele.',
     modelUrl: './models/l39.glb',
     price: 1200,
+    landingGear: {
+      noseMount: [0, -0.34, -3.7],
+      leftMainMount: [-1.15, -0.38, 0.65],
+      rightMainMount: [1.15, -0.38, 0.65],
+      noseStrutLength: 1.74,
+      mainStrutLength: 1.68,
+      wheelRadius: 0.25,
+      wheelWidth: 0.17,
+      groundClearance: 2.34,
+      takeoffSpeed: 50,
+      landingSpeed: 68,
+      retractSpeed: 1.9,
+    },
     traits: ['Wendig', 'Leicht', 'CAS-Light'],
     era: 'modern',
     engineType: 'jet',
@@ -336,6 +408,19 @@ export const JET_CATALOG: JetDef[] = [
       'Experimenteller High-Speed-Interceptor. Extrem schnell, Rail-Burst-Kanone, schwere IR-Raketen und starke Flare-Gegenmaßnahmen.',
     modelUrl: './models/elite-jaeger.glb',
     price: 3200,
+    landingGear: {
+      noseMount: [0, -0.44, -4.8],
+      leftMainMount: [-1.5, -0.5, 0.7],
+      rightMainMount: [1.5, -0.5, 0.7],
+      noseStrutLength: 1.76,
+      mainStrutLength: 1.68,
+      wheelRadius: 0.29,
+      wheelWidth: 0.2,
+      groundClearance: 2.49,
+      takeoffSpeed: 70,
+      landingSpeed: 88,
+      retractSpeed: 2.7,
+    },
     traits: ['Top-Speed', 'Rail-Burst', 'Flares'],
     era: 'modern',
     engineType: 'jet',
@@ -377,6 +462,19 @@ export const JET_CATALOG: JetDef[] = [
       'Gepanzerter Erdkampfflugzeug. Langsam, aber extrem robust — ideal gegen SAM und Bodenziele, im Dogfight im Nachteil.',
     modelUrl: './models/su25.glb',
     price: 0,
+    landingGear: {
+      noseMount: [0, -0.5, -4.35],
+      leftMainMount: [-1.75, -0.58, 0.7],
+      rightMainMount: [1.75, -0.58, 0.7],
+      noseStrutLength: 1.83,
+      mainStrutLength: 1.77,
+      wheelRadius: 0.34,
+      wheelWidth: 0.25,
+      groundClearance: 2.69,
+      takeoffSpeed: 54,
+      landingSpeed: 74,
+      retractSpeed: 1.55,
+    },
     traits: ['Panzerung', 'CAS', '30mm GSh'],
     era: 'modern',
     engineType: 'jet',
@@ -422,6 +520,19 @@ export const JET_CATALOG: JetDef[] = [
       'Schwerer Jagdbomber mit starker Bewaffnung. Solide Geschwindigkeit, mittlere Wendigkeit, viele Raketen.',
     modelUrl: './models/su34.glb',
     price: 2200,
+    landingGear: {
+      noseMount: [0, -0.62, -7.5],
+      leftMainMount: [-2.05, -0.72, 1.65],
+      rightMainMount: [2.05, -0.72, 1.65],
+      noseStrutLength: 2.09,
+      mainStrutLength: 1.99,
+      wheelRadius: 0.4,
+      wheelWidth: 0.3,
+      groundClearance: 3.11,
+      takeoffSpeed: 70,
+      landingSpeed: 94,
+      retractSpeed: 1.45,
+    },
     traits: ['Strike', 'Twin AL-31', '8× R-77'],
     era: 'modern',
     engineType: 'jet',
@@ -463,6 +574,19 @@ export const JET_CATALOG: JetDef[] = [
       'Russisches 5.-Gen-Jagdflugzeug. Schnell, wendig, starke Elektronik und umfangreiche Flare-Gegenmaßnahmen.',
     modelUrl: './models/su57.glb',
     price: 2800,
+    landingGear: {
+      noseMount: [0, -0.52, -6.25],
+      leftMainMount: [-1.95, -0.62, 1.2],
+      rightMainMount: [1.95, -0.62, 1.2],
+      noseStrutLength: 1.61,
+      mainStrutLength: 1.51,
+      wheelRadius: 0.35,
+      wheelWidth: 0.25,
+      groundClearance: 2.48,
+      takeoffSpeed: 68,
+      landingSpeed: 90,
+      retractSpeed: 2.35,
+    },
     // Auto-Align setzt Nase auf −Z; früherer yawDeg:180 drehte den Felon rückwärts
     traits: ['5th Gen', 'Supermaneuver', 'Flares'],
     era: 'modern',

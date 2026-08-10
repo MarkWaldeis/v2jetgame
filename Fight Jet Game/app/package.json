@@ -12,7 +12,8 @@
     "test:map": "node map-test.mjs",
     "test:map-visual": "node map-visual-test.mjs",
     "test:smoke": "node smoke-test.mjs",
-    "test:assets": "node hangar-test.mjs"
+    "test:assets": "node hangar-test.mjs",
+    "test:landing": "node landing-gear-test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

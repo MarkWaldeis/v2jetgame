@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 output/
+landing-test-output/
 
 # Editor directories and files
 .vscode/*
