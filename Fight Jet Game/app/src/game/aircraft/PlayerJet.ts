@@ -5,6 +5,7 @@ import type { Input } from '../core/Input';
 import type { HeightField } from '../world/GlbMapTerrain';
 import type { Damageable } from '../combat/GroundTarget';
 import { getJetDef, jetFxVectors, type JetDef, type JetId } from './JetCatalog';
+import { isOnRunway, type RunwayDef } from '../world/MapCatalog';
 
 export type PlayerGroundState = 'airborne' | 'grounded';
 
@@ -32,6 +33,8 @@ export class PlayerJet extends Aircraft {
   score = 0;
   crashed = false;
   groundState: PlayerGroundState = 'airborne';
+  /** Vom Spieler mit B gesteuert: Fahrwerk ausgefahren (Voraussetzung zum Landen). */
+  gearExtended = false;
   private landedEvent = false;
   private tookOffEvent = false;
   private takeoffGrace = 0;
@@ -61,6 +64,7 @@ export class PlayerJet extends Aircraft {
     this.flight.turnMult = def.stats.turnMult;
     this.applyFlightPhysics(def.physics, def.engineType);
     this.landingGear.configure(def.landingGear);
+    this.gearExtended = false;
     this.landingGear.setExtended(this.groundState === 'grounded', true);
     this.catalogMuzzles = jetFxVectors(def).muzzles;
   }
@@ -80,6 +84,7 @@ export class PlayerJet extends Aircraft {
     this.alive = true;
     this.crashed = false;
     this.groundState = 'airborne';
+    this.gearExtended = false;
     this.landedEvent = false;
     this.tookOffEvent = false;
     this.takeoffGrace = 0;
@@ -162,6 +167,8 @@ export class PlayerJet extends Aircraft {
       freeLook?: boolean;
       /** Nur auf Maps mit sichtbarem Wasser gesetzt; null = gesamtes Terrain ist fest. */
       waterLevel?: number | null;
+      /** Landebahn der aktiven Karte (macht Landen dort deutlich leichter). */
+      runway?: RunwayDef | null;
     }
   ) {
     if (!this.alive) return;
@@ -195,6 +202,11 @@ export class PlayerJet extends Aircraft {
 
     this.flight.throttle = input.throttle;
     const previousY = this.position.y;
+    if (this.groundState === 'airborne' && input.wasPressed('KeyB')) {
+      // B: Fahrwerk manuell ausfahren/einfahren. Ausgefahren = Voraussetzung
+      // zum Landen und wirkt zugleich als Luftbremse (mehr Widerstand).
+      this.gearExtended = !this.gearExtended;
+    }
     if (this.groundState === 'grounded') {
       this.updateGroundRoll(dt, input, terrain);
     } else {
@@ -202,7 +214,7 @@ export class PlayerJet extends Aircraft {
         aimDir: opts?.aimDir ?? null,
         mouseAim: !!opts?.mouseAim && this.fbwBlend > 0.02,
         fbwBlend: this.fbwBlend,
-        airbrake: input.airbrake,
+        airbrake: this.gearExtended,
         wind: this.wind,
       });
       this.takeoffGrace = Math.max(0, this.takeoffGrace - dt);
@@ -236,19 +248,14 @@ export class PlayerJet extends Aircraft {
     const overWater = waterLevel != null && terrainY <= waterLevel + 0.5;
     const surfaceY = overWater ? waterLevel : terrainY;
     const contactY = surfaceY + this.loadout.landingGear.groundClearance;
-    const agl = p.y - contactY;
-    const approaching =
-      this.takeoffGrace <= 0 &&
-      this.flight.velocityDir.y < -0.015 &&
-      agl < 140 &&
-      this.flight.speed <= this.loadout.landingGear.landingSpeed * 1.45 &&
-      this.forward.y < 0.28;
-    this.landingGear.setExtended(this.groundState === 'grounded' || approaching);
+    this.landingGear.setExtended(this.groundState === 'grounded' || this.gearExtended);
     this.landingGear.update(dt);
+
+    const onRunway = opts?.runway ? isOnRunway(opts.runway, p.x, p.z) : false;
 
     if (this.groundState === 'airborne' && this.takeoffGrace <= 0 && p.y <= contactY) {
       const sinkRate = Math.max(0, (previousY - p.y) / Math.max(dt, 0.001));
-      if (!overWater && this.canLand(terrain, sinkRate)) {
+      if (!overWater && this.gearExtended && this.canLand(terrain, sinkRate, onRunway)) {
         this.completeLanding(contactY);
       } else {
         p.y = Math.max(contactY, waterLevel ?? contactY);
@@ -266,6 +273,11 @@ export class PlayerJet extends Aircraft {
 
   get isGrounded(): boolean {
     return this.groundState === 'grounded';
+  }
+
+  /** Fahrwerk ausgefahren (manuell per B) oder bereits am Boden. */
+  get gearDown(): boolean {
+    return this.groundState === 'grounded' || this.gearExtended;
   }
 
   consumeLandedEvent(): boolean {
@@ -324,11 +336,17 @@ export class PlayerJet extends Aircraft {
       this.groundState = 'airborne';
       this.takeoffGrace = 1.2;
       this.tookOffEvent = true;
+      this.gearExtended = false;
       this.landingGear.setExtended(false);
     }
   }
 
-  private canLand(terrain: HeightField, sinkRate: number): boolean {
+  /**
+   * Arcade-Landefenster: großzügig, damit langsames, ruhiges Aufsetzen
+   * fast immer gelingt. Auf einer befestigten Landebahn (onRunway) nochmal
+   * deutlich toleranter, da der Untergrund garantiert flach und griffig ist.
+   */
+  private canLand(terrain: HeightField, sinkRate: number, onRunway: boolean): boolean {
     const gear = this.loadout.landingGear;
     const bankDeg = THREE.MathUtils.radToDeg(Math.asin(THREE.MathUtils.clamp(Math.abs(this.flight.bankSigned), 0, 1)));
     const pitchDeg = THREE.MathUtils.radToDeg(Math.asin(THREE.MathUtils.clamp(this.forward.y, -1, 1)));
@@ -337,13 +355,20 @@ export class PlayerJet extends Aircraft {
     const dz = (terrain.getHeight(this.position.x, this.position.z + sample) - terrain.getHeight(this.position.x, this.position.z - sample)) / (sample * 2);
     const slopeDeg = THREE.MathUtils.radToDeg(Math.atan(Math.hypot(dx, dz)));
 
+    const speedLimit = gear.landingSpeed * (onRunway ? 1.35 : 1.15);
+    const sinkLimit = onRunway ? 14 : 10;
+    const bankLimit = onRunway ? 28 : 20;
+    const pitchMin = onRunway ? -12 : -9;
+    const pitchMax = onRunway ? 28 : 24;
+    const slopeLimit = onRunway ? 25 : 15;
+
     return (
-      this.flight.speed <= gear.landingSpeed &&
-      sinkRate <= 8 &&
-      bankDeg <= 16 &&
-      pitchDeg >= -6 &&
-      pitchDeg <= 20 &&
-      slopeDeg <= 12
+      this.flight.speed <= speedLimit &&
+      sinkRate <= sinkLimit &&
+      bankDeg <= bankLimit &&
+      pitchDeg >= pitchMin &&
+      pitchDeg <= pitchMax &&
+      slopeDeg <= slopeLimit
     );
   }
 
@@ -358,6 +383,7 @@ export class PlayerJet extends Aircraft {
     this.flight.rollRateActual = 0;
     this.flight.bankSigned = 0;
     this.groundState = 'grounded';
+    this.gearExtended = true;
     this.landedEvent = true;
     this.landingGear.setExtended(true, true);
   }

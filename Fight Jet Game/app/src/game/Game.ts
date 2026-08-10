@@ -78,6 +78,8 @@ export interface HudData {
   reloadProgress: number;
   manualOverride: boolean;
   airbrake: boolean;
+  /** Fahrwerk ausgefahren (per B) oder am Boden. */
+  gearDown: boolean;
   /**
    * Radar-Kontakte (lokaler Jet-Raum, -1..1 relativ radarRange):
    * bandit = Luft, sam = SAM, aaa = Flak, missile = eingehende Lenkwaffe
@@ -876,6 +878,7 @@ export class Game {
         mouseAim: !free && !this.input.manualOverride,
         freeLook: free,
         waterLevel: getMapDef(this.selectedMapId).showSea ? CONFIG.world.seaLevel : null,
+        runway: getMapDef(this.selectedMapId).runway ?? null,
       }
     );
 
@@ -1077,7 +1080,7 @@ export class Game {
           this.input.afterburner && player.alive && player.hasAfterburner,
         firing: this.input.cannon && player.alive,
         stalled: player.flight.stalled && player.alive,
-        airbrake: this.input.airbrake,
+        airbrake: player.isGrounded ? this.input.airbrake : player.gearExtended,
         camFit: player.camFit,
         rollRate: player.flight.rollRateActual,
         bank: player.flight.bankSigned,
@@ -1555,6 +1558,14 @@ export class Game {
     const missileThreat = this.missiles.some((m) => m.targetIs(p));
     if (missileThreat) warning = 'MISSILE — X FLARES';
     else if (p.flareCloudTimer > 0.05 && p.alive) warning = 'FLARES OUT';
+    if (!warning && p.alive && !p.isGrounded && !p.gearExtended) {
+      const terrainYForGear = this.heightField.getHeight(p.position.x, p.position.z);
+      const gearContactY = terrainYForGear + p.loadout.landingGear.groundClearance;
+      const gearAgl = p.position.y - gearContactY;
+      if (gearAgl < 260 && p.flight.speed < p.loadout.landingGear.landingSpeed * 1.6) {
+        warning = 'FAHRWERK AUSFAHREN (B)';
+      }
+    }
 
     // Lock-Ziel auf Bildschirm projizieren
     let lockScreen: HudData['lockScreen'] = null;
@@ -1686,7 +1697,8 @@ export class Game {
       reloading: p.reloading,
       reloadProgress: p.reloadProgress,
       manualOverride: this.input.manualOverride,
-      airbrake: this.input.airbrake,
+      airbrake: p.isGrounded ? this.input.airbrake : p.gearExtended,
+      gearDown: p.gearDown,
       gForce: p.flight.gForce,
       hp: Math.max(0, Math.round(p.hp)),
       maxHp: p.maxHp,

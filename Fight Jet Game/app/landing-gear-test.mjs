@@ -30,6 +30,88 @@ await page.waitForFunction(() => Boolean(window.__game), { timeout: 30000 });
 const jets = ['f16', 'f35', 'f14', 'l39', 'elite', 'su25', 'su34', 'su57'];
 const report = [];
 
+/**
+ * Prüft gezielt: Fahrwerkspflicht (B), Landebahn-Bonus und die weiterhin
+ * vorhandene strengere Basistoleranz abseits der Landebahn.
+ */
+async function runScenario(pg, id, gearExtended, opts) {
+  try {
+    const info = await pg.evaluate(
+      async (params) => {
+        const g = window.__game;
+        await g.startGame('f16');
+        g.loop.stop();
+        g.clearActors();
+        g.state = 'playing';
+
+        const p = g.player;
+        const input = g.input;
+        const terrain = g.heightField;
+        const gear = p.loadout.landingGear;
+
+        let x = params.fixedX;
+        let z = params.fixedZ;
+        if (x == null || z == null) {
+          // Flache Stelle abseits der Landebahn/Airbase-Einebnung suchen.
+          for (let sz = -8000; sz <= 8000 && x == null; sz += 500) {
+            for (let sx = -8000; sx <= 8000; sx += 500) {
+              const baseRadius = Math.hypot(sx / 2050, (sz - 3200) / 1550);
+              if (baseRadius < 1.15) continue;
+              const sy = terrain.getHeight(sx, sz);
+              if (sy < 8) continue;
+              const dx = (terrain.getHeight(sx + 8, sz) - terrain.getHeight(sx - 8, sz)) / 16;
+              const dz = (terrain.getHeight(sx, sz + 8) - terrain.getHeight(sx, sz - 8)) / 16;
+              if ((Math.atan(Math.hypot(dx, dz)) * 180) / Math.PI <= 8) {
+                x = sx;
+                z = sz;
+                break;
+              }
+            }
+          }
+          if (x == null) throw new Error('Keine flache Stelle abseits der Landebahn gefunden');
+        }
+        const y = terrain.getHeight(x, z);
+
+        input.throttle = 0;
+        input.pitch = 0;
+        input.roll = 0;
+        input.yaw = 0;
+        input.airbrake = false;
+        input.manualOverride = false;
+        p.groundState = 'airborne';
+        p.takeoffGrace = 0;
+        p.gearExtended = params.gearExtended;
+
+        const rollRad = (params.bankDeg * Math.PI) / 180;
+        p.object.quaternion.set(0, 0, Math.sin(rollRad / 2), Math.cos(rollRad / 2));
+        p.position.set(x, y + gear.groundClearance + 0.004, z);
+        p.flight.speed = gear.landingSpeed * 0.55;
+        p.flight.velocityDir.set(0, -0.03, -1).normalize();
+
+        const runway = params.useRunway
+          ? { centerX: 0, centerZ: 3200, headingDeg: 0, length: 2820, width: 200 }
+          : null;
+
+        let crashed = false;
+        for (let i = 0; i < 8 && !p.isGrounded && !crashed; i++) {
+          p.update(1 / 120, input, terrain, () => { crashed = true; }, {
+            mouseAim: false,
+            waterLevel: 0,
+            runway,
+          });
+        }
+
+        return { landed: p.isGrounded && !crashed, crashed, x, z };
+      },
+      { ...opts, gearExtended }
+    );
+    const ok = info.landed === opts.expectLanded;
+    return { id, ok, ...info };
+  } catch (error) {
+    return { id, ok: false, error: String(error?.message || error) };
+  }
+}
+
 for (const id of jets) {
   let result;
   try {
@@ -64,10 +146,11 @@ for (const id of jets) {
       input.pitch = 0;
       input.roll = 0;
       input.yaw = 0;
-      input.airbrake = true;
+      input.airbrake = false;
       input.manualOverride = false;
       p.groundState = 'airborne';
       p.takeoffGrace = 0;
+      p.gearExtended = true; // simuliert: Spieler hat vorher B gedrückt
       p.object.quaternion.identity();
       p.position.set(spot.x, spot.y + gear.groundClearance + 0.004, spot.z);
       p.flight.speed = gear.landingSpeed * 0.55;
@@ -168,6 +251,36 @@ for (const id of jets) {
   report.push({ id, ok, ...result });
   console.log(id, ok ? 'OK' : 'FAIL', JSON.stringify(result));
 }
+
+const gearRequired = await runScenario(page, 'gear-required', false, {
+  fixedX: 0,
+  fixedZ: 3200,
+  bankDeg: 0,
+  useRunway: false,
+  expectLanded: false,
+});
+report.push(gearRequired);
+console.log(gearRequired.id, gearRequired.ok ? 'OK' : 'FAIL', JSON.stringify(gearRequired));
+
+const runwayBonus = await runScenario(page, 'runway-bonus', true, {
+  fixedX: 0,
+  fixedZ: 3200,
+  bankDeg: 24,
+  useRunway: true,
+  expectLanded: true,
+});
+report.push(runwayBonus);
+console.log(runwayBonus.id, runwayBonus.ok ? 'OK' : 'FAIL', JSON.stringify(runwayBonus));
+
+const offRunwayStrict = await runScenario(page, 'off-runway-strict', true, {
+  fixedX: null,
+  fixedZ: null,
+  bankDeg: 24,
+  useRunway: false,
+  expectLanded: false,
+});
+report.push(offRunwayStrict);
+console.log(offRunwayStrict.id, offRunwayStrict.ok ? 'OK' : 'FAIL', JSON.stringify(offRunwayStrict));
 
 await browser.close();
 preview.kill();

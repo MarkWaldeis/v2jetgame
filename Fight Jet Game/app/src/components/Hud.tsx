@@ -277,6 +277,11 @@ export function Hud({ data }: { data: HudData }) {
                   BRK
                 </div>
               )}
+              {data.gearDown && (
+                <div className="mt-0.5 text-[10px] font-bold tracking-widest" style={{ color: BLUE }}>
+                  GEAR DOWN
+                </div>
+              )}
             </div>
           </div>
 

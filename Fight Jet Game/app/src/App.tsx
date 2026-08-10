@@ -31,6 +31,7 @@ const initialHud: HudData = {
   reloadProgress: 1,
   manualOverride: false,
   airbrake: false,
+  gearDown: false,
   worldMarkers: [],
   damage: {
     hullPct: 100,

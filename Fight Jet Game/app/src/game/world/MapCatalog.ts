@@ -3,6 +3,19 @@ export type MapId = 'islands' | 'glacier';
 
 export type MapKind = 'procedural' | 'glb';
 
+/** Feste, befestigte Landebahn auf einer Karte (Welt-Rechteck). */
+export interface RunwayDef {
+  centerX: number;
+  centerZ: number;
+  /** Ausrichtung der Landebahn-Längsachse in Grad (0 = entlang Welt-Z). */
+  headingDeg: number;
+  /** Länge entlang der Landebahn-Achse (m). */
+  length: number;
+  /** Breite quer zur Landebahn-Achse (m). */
+  width: number;
+  label: string;
+}
+
 export interface MapDef {
   id: MapId;
   name: string;
@@ -34,6 +47,8 @@ export interface MapDef {
    */
   heightMode?: 'raycast' | 'ground-plane';
   tags: string[];
+  /** Vorhandene befestigte Landebahn (macht Landen dort deutlich leichter). */
+  runway?: RunwayDef;
 }
 
 /** Mindest-Längste-Achse des Roh-Assets (m), sonst unbrauchbar */
@@ -55,6 +70,16 @@ export const MAP_CATALOG: MapDef[] = [
     fogFar: 34000,
     spawnClearance: 950,
     tags: ['Neu', '42 km', 'Ozean', 'Militärbasis'],
+    // Naval Air Station Kestrel: befestigte Piste bei (0, 3200), siehe StormbreakTerrain.buildAirbase().
+    // Deckt die sichtbare Betonplatte + Asphaltbahn aus StormbreakTerrain.buildAirbase() ab.
+    runway: {
+      centerX: 0,
+      centerZ: 3200,
+      headingDeg: 0,
+      length: 2820,
+      width: 200,
+      label: 'Naval Air Station Kestrel',
+    },
   },
   {
     id: 'glacier',
@@ -79,4 +104,16 @@ export const MAP_CATALOG: MapDef[] = [
 
 export function getMapDef(id: MapId): MapDef {
   return MAP_CATALOG.find((m) => m.id === id) ?? MAP_CATALOG[0];
+}
+
+/** Prüft, ob eine Welt-Position innerhalb des Landebahn-Rechtecks liegt. */
+export function isOnRunway(runway: RunwayDef, x: number, z: number): boolean {
+  const dx = x - runway.centerX;
+  const dz = z - runway.centerZ;
+  const rad = (-runway.headingDeg * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const localX = dx * cos - dz * sin;
+  const localZ = dx * sin + dz * cos;
+  return Math.abs(localX) <= runway.width / 2 && Math.abs(localZ) <= runway.length / 2;
 }
