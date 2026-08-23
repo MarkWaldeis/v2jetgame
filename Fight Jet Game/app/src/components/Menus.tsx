@@ -41,20 +41,20 @@ function sfx(kind: 'click' | 'hover' | 'nav' | 'confirm' | 'deny' | 'purchase' |
 }
 
 const CONTROLS: { key: string; label: string }[] = [
-  { key: 'Maus', label: 'Mouse-Aim (Fly-By-Wire)' },
-  { key: 'S / W', label: 'Ziehen / Drücken' },
-  { key: 'A / D', label: 'Rollen (eigene Achse)' },
-  { key: 'Q / E', label: 'Seitenruder' },
-  { key: 'Shift · Ctrl · Rad', label: 'Schub / WEP' },
-  { key: 'B', label: 'Fahrwerk ausfahren/einfahren (in der Luft) · Bremse am Boden' },
-  { key: 'Leertaste', label: 'Bordkanone' },
-  { key: 'R', label: 'Nachladen' },
-  { key: 'G', label: 'Nächstes Lock-Ziel wechseln (Auto-Lock aktiv)' },
-  { key: 'F / M', label: 'Rakete (nach Lock)' },
-  { key: 'Landung', label: 'B = Fahrwerk raus · langsam & gerade aufsetzen · S zum Abheben' },
-  { key: 'X / Z', label: 'Flares (Gegenmaßnahmen, 50/50)' },
-  { key: 'C / RMB', label: 'Free-Look (halten)' },
-  { key: 'V', label: 'Cockpit / Chase' },
+  { key: 'Mouse', label: 'Aim point (fly-by-wire)' },
+  { key: 'S / W', label: 'Pull / push (pitch)' },
+  { key: 'A / D', label: 'Roll' },
+  { key: 'Q / E', label: 'Rudder' },
+  { key: 'Shift · Ctrl · Wheel', label: 'Throttle / WEP' },
+  { key: 'B', label: 'Gear in the air · wheel brake on the ground' },
+  { key: 'Space', label: 'Cannon' },
+  { key: 'R', label: 'Reload cannon' },
+  { key: 'G', label: 'Cycle lock target (auto-lock on)' },
+  { key: 'F / M', label: 'Fire missile (after lock)' },
+  { key: 'Landing', label: 'Gear down with B · slow, wings-level touchdown · S to rotate' },
+  { key: 'X / Z', label: 'Flares (50/50 spoof chance)' },
+  { key: 'C / RMB', label: 'Free-look (hold)' },
+  { key: 'V', label: 'Cockpit / chase camera' },
   { key: 'P / Esc', label: 'Pause' },
 ];
 
@@ -141,7 +141,7 @@ export function Menus({
       await onSelectMap(id);
     } catch (e) {
       sfx('deny');
-      setMapError(e instanceof Error ? e.message : 'Map konnte nicht geladen werden');
+      setMapError(e instanceof Error ? e.message : 'Map failed to load');
     } finally {
       setMapLoading(false);
     }
@@ -312,11 +312,11 @@ export function Menus({
     icon: 'home' | 'hangar' | 'campaign' | 'maps' | 'settings';
     label: string;
   }[] = [
-    { screen: 'main', icon: 'home', label: 'Kommando' },
+    { screen: 'main', icon: 'home', label: 'Command' },
     { screen: 'hangar', icon: 'hangar', label: 'Hangar' },
-    { screen: 'missions', icon: 'campaign', label: 'Kampagne' },
-    { screen: 'maps', icon: 'maps', label: 'Einsatzgebiet' },
-    { screen: 'settings', icon: 'settings', label: 'Systeme' },
+    { screen: 'missions', icon: 'campaign', label: 'Campaign' },
+    { screen: 'maps', icon: 'maps', label: 'Theater' },
+    { screen: 'settings', icon: 'settings', label: 'Systems' },
   ];
 
   // ─── Hangar Atmosphere Background ──────────────────────────────────────
@@ -381,7 +381,7 @@ export function Menus({
         onClick={(ev) => startMission(ev)}
         onMouseEnter={() => sfx('hover')}
         onPointerDown={(ev) => ev.stopPropagation()}
-        title={canBattle ? 'Mission starten' : 'Wähle einen freigeschalteten Jet im Hangar'}
+        title={canBattle ? 'Start mission' : 'Unlock or select a jet in the hangar'}
       >
         <span className="topbar-start-icon">
           <NavIcon name="launch" />
@@ -394,13 +394,13 @@ export function Menus({
         className="topbar-chip"
         onClick={() => navigateTo('maps')}
         onMouseEnter={() => sfx('hover')}
-        title="Map wählen"
+        title="Select map"
       >
         <span className="topbar-chip-icon">
           <NavIcon name="map" />
         </span>
         <div className="min-w-0 text-left">
-          <div className="topbar-chip-label">Map wählen</div>
+          <div className="topbar-chip-label">Select map</div>
           <div className="topbar-chip-value truncate">{selectedMap?.name ?? selectedMapId}</div>
           <div className="topbar-chip-sub">{mapKm} × {mapKm} km</div>
         </div>
@@ -429,15 +429,15 @@ export function Menus({
             ev.stopPropagation();
             handleUnlockAllJets();
           }}
-          title="Dev: alle Flugzeuge freischalten"
+          title="Dev: unlock all aircraft"
         >
           <span className="topbar-chip-icon" aria-hidden="true">
             ✦
           </span>
           <div className="min-w-0 text-left">
             <div className="topbar-chip-label">Unlock</div>
-            <div className="topbar-chip-value truncate">Alle Jets</div>
-            <div className="topbar-chip-sub truncate">nur Dev</div>
+            <div className="topbar-chip-value truncate">All jets</div>
+            <div className="topbar-chip-sub truncate">dev only</div>
           </div>
         </button>
       )}
@@ -451,9 +451,10 @@ export function Menus({
       <div className="pointer-events-auto fixed inset-0 z-[100] flex items-center justify-center bg-black/70">
         <div className="glass-panel mx-4 w-full max-w-md p-6 text-center">
           <div className="glass-eyebrow mb-2">Command Link</div>
-          <h3 className="glass-title mb-2 text-2xl">Sitzung trennen?</h3>
+          <h3 className="glass-title mb-2 text-2xl">Leave the sortie?</h3>
           <p className="glass-subtitle mb-6 text-sm">
-            Rückkehr zum Kommando. Fortschritt der laufenden Mission geht verloren.
+            Hangar and campaign progress stay in this browser. An active mission will be aborted.
+            Close the tab when you are done.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
             <button
@@ -465,7 +466,7 @@ export function Menus({
               }}
               onMouseEnter={() => sfx('hover')}
             >
-              Abbrechen
+              Cancel
             </button>
             <button
               type="button"
@@ -473,7 +474,7 @@ export function Menus({
               onClick={confirmExit}
               onMouseEnter={() => sfx('hover')}
             >
-              Trennen
+              Return to command
             </button>
           </div>
         </div>
@@ -486,9 +487,9 @@ export function Menus({
       <div className="mb-4 flex flex-wrap gap-2">
         {(
           [
-            ['graphics', 'Grafik'],
+            ['graphics', 'Graphics'],
             ['sound', 'Sound'],
-            ['controls', 'Steuerung'],
+            ['controls', 'Controls'],
             ['about', 'Credits'],
           ] as const
         ).map(([id, label]) => (
@@ -506,7 +507,7 @@ export function Menus({
       {settingsTab === 'graphics' && (
         <div className="space-y-5">
           <div>
-            <div className="mb-2 text-xs tracking-[0.16em] text-white/50 uppercase">Qualität</div>
+            <div className="mb-2 text-xs tracking-[0.16em] text-white/50 uppercase">Quality</div>
             <div className="flex flex-wrap gap-2">
               {(['low', 'medium', 'high'] as GraphicsQuality[]).map((q) => (
                 <button
@@ -517,23 +518,23 @@ export function Menus({
                   }`}
                   onClick={() => patchSettings({ graphicsQuality: q })}
                 >
-                  {q === 'low' ? 'Niedrig' : q === 'medium' ? 'Mittel' : 'Hoch'}
+                  {q === 'low' ? 'Low' : q === 'medium' ? 'Medium' : 'High'}
                 </button>
               ))}
             </div>
             <p className="mt-2 text-xs text-white/40">
-              Hoch empfiehlt sich für Desktop. Einstellungen werden lokal gespeichert.
+              High is best on desktop. Settings are saved in this browser.
             </p>
           </div>
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-semibold text-white">Flug-HUD anzeigen</div>
-              <div className="text-xs text-white/45">Speed, Radar, Reticle & Status</div>
+              <div className="text-sm font-semibold text-white">Show flight HUD</div>
+              <div className="text-xs text-white/45">Speed, radar, reticle, and status</div>
             </div>
             <button
               type="button"
               className={`glass-toggle ${settings.showHud ? 'is-on' : ''}`}
-              aria-label="HUD umschalten"
+              aria-label="Toggle HUD"
               onClick={() => patchSettings({ showHud: !settings.showHud })}
             />
           </div>
@@ -545,12 +546,12 @@ export function Menus({
                 type="button"
                 className="glass-button glass-button-primary w-full py-3 text-sm font-bold uppercase tracking-[0.12em]"
                 onClick={handleUnlockAllJets}
-                title="Dev: schaltet alle Katalog-Jets im Hangar frei"
+                title="Dev: unlock every catalog jet"
               >
-                Alle Flugzeuge freischalten
+                Unlock all aircraft
               </button>
               <p className="mt-2 text-xs text-white/40">
-                Nur im lokalen Dev-Server. Fortschritt liegt nur in diesem Browser.
+                Local dev server only. Progress stays in this browser.
               </p>
             </div>
           )}
@@ -561,19 +562,19 @@ export function Menus({
         <div className="space-y-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-semibold text-white">Stumm</div>
-              <div className="text-xs text-white/45">Triebwerk, Waffen, Warner</div>
+              <div className="text-sm font-semibold text-white">Mute</div>
+              <div className="text-xs text-white/45">Engine, weapons, warnings</div>
             </div>
             <button
               type="button"
               className={`glass-toggle ${settings.muted ? 'is-on' : ''}`}
-              aria-label="Stumm umschalten"
+              aria-label="Toggle mute"
               onClick={() => patchSettings({ muted: !settings.muted })}
             />
           </div>
           <div>
             <div className="mb-2 flex justify-between text-xs tracking-[0.12em] text-white/50 uppercase">
-              <span>Master-Lautstärke</span>
+              <span>Master volume</span>
               <span className="glass-mono text-white/80">{Math.round(settings.masterVolume * 100)}%</span>
             </div>
             <input
@@ -613,18 +614,18 @@ export function Menus({
       {settingsTab === 'about' && (
         <div className="space-y-3 text-sm text-white/65">
           <p>
-            <span className="font-semibold text-[#e8e6d4]">Fight Jet 3D</span> v1.0.0 — Singleplayer
-            Arcade-Jet-Combat. Kein Konto, kein Multiplayer, kein Server.
+            <span className="font-semibold text-[#e8e6d4]">Fight Jet 3D</span> v1.0.0 — single-player
+            arcade jet combat. No account, no multiplayer, no server.
           </p>
           <p>
-            Fortschritt (Credits, Hangar, Kampagne) bleibt lokal in diesem Browser gespeichert.
+            Credits, hangar unlocks, and campaign progress stay in this browser.
           </p>
           <p>
-            Spielcode und UI: Mark Waldeis. 3D-Modelle (Jets, Waffen, Glacier-Karte) stammen von
-            Drittanbietern und unterliegen deren Lizenzen. Keine realen Militärdaten.
+            Game code and UI: Mark Waldeis. Aircraft, weapon, and glacier 3D models come from
+            third parties and keep their original licenses. Arcade fiction — not real military data.
           </p>
           <p className="text-xs text-white/40">
-            Desktop-Browser mit WebGL (Chrome, Edge, Firefox).
+            Desktop browser with WebGL (Chrome, Edge, Firefox).
           </p>
         </div>
       )}
@@ -656,7 +657,7 @@ export function Menus({
               }}
               onMouseEnter={() => sfx('hover')}
             >
-              Weiterfliegen (P)
+              Resume (P)
             </button>
             <button
               type="button"
@@ -668,7 +669,7 @@ export function Menus({
               }}
               onMouseEnter={() => sfx('hover')}
             >
-              Zum Kommando
+              Command
             </button>
           </div>
         </div>
@@ -688,13 +689,13 @@ export function Menus({
             className="glass-eyebrow mb-2"
             style={{ color: win ? 'var(--accent-success)' : 'var(--accent-danger)' }}
           >
-            {win ? 'Alle Wellen abgeschlossen' : 'Airframe lost'}
+            {win ? 'All waves complete' : 'Airframe lost'}
           </div>
           <h2 className="glass-title mb-2 text-4xl" style={{ color: win ? '#fff' : 'var(--accent-danger)' }}>
-            {win ? 'Mission erfüllt' : 'Shot Down'}
+            {win ? 'Mission complete' : 'Shot down'}
           </h2>
           <p className="glass-subtitle mb-1 text-sm">
-            {win ? `Der Himmel gehört ${selected.callsign}.` : `${selected.callsign} ist abgestürzt.`}
+            {win ? `${selected.callsign} owns the sky.` : `${selected.callsign} is down.`}
           </p>
           <p className="mb-6 text-2xl font-bold">
             Score <span className="glass-mono text-amber-300">{score}</span>
@@ -705,7 +706,7 @@ export function Menus({
               className="glass-button glass-button-primary w-full py-3.5"
               onClick={startMission}
             >
-              {win ? 'Neue Mission' : 'Erneut fliegen'} (Enter)
+              {win ? 'New mission' : 'Fly again'} (Enter)
             </button>
             <button
               type="button"
@@ -719,7 +720,7 @@ export function Menus({
               }}
               onMouseEnter={() => sfx('hover')}
             >
-              Hangar öffnen
+              Open hangar
             </button>
           </div>
         </div>
@@ -745,7 +746,7 @@ export function Menus({
           </div>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-0.5 px-3 py-3" aria-label="Hauptnavigation">
+        <nav className="flex flex-1 flex-col gap-0.5 px-3 py-3" aria-label="Main navigation">
           {NAV_ITEMS.map((item) => (
             <button
               key={item.screen}
@@ -781,7 +782,7 @@ export function Menus({
             <span className="sidebar-btn-icon" aria-hidden="true">
               <NavIcon name="exit" />
             </span>
-            <span>Beenden</span>
+            <span>Quit</span>
           </button>
         </div>
       </aside>
@@ -829,7 +830,7 @@ export function Menus({
                 type="button"
                 className="cmd-plate pointer-events-auto"
                 onClick={openHangar}
-                title="Hangar öffnen"
+                title="Open hangar"
               >
                 <div className="cmd-plate-thumb">
                   <JetThumb jetId={selected.id} faction={selected.faction} />
@@ -847,13 +848,13 @@ export function Menus({
                 type="button"
                 className="cmd-plate pointer-events-auto"
                 onClick={() => navigateTo('maps')}
-                title="Map wählen"
+                title="Select map"
               >
                 <div className="cmd-plate-icon">
                   <NavIcon name="map" />
                 </div>
                 <div className="min-w-0 text-left">
-                  <div className="cmd-plate-label">Map wählen</div>
+                  <div className="cmd-plate-label">Select map</div>
                   <div className="cmd-plate-name truncate">{selectedMap?.name ?? selectedMapId}</div>
                   <div className="cmd-plate-sub">
                     {mapKm} × {mapKm} km
@@ -863,7 +864,7 @@ export function Menus({
             </div>
 
             <p className="cmd-hint pointer-events-none">
-              Jet drehen · Scroll zoom · Navigation über Sidebar
+              Drag to orbit · scroll to zoom · navigate in the sidebar
             </p>
           </div>
         )}
@@ -907,7 +908,7 @@ export function Menus({
                   className="glass-button glass-button-ghost !px-3 !py-1.5 !text-xs"
                   onClick={() => navigateTo('main')}
                 >
-                  ← Kommando
+                  ← Command
                 </button>
               </div>
             </div>
@@ -943,22 +944,22 @@ export function Menus({
                   {' — '}
                   {selected.special.detail}
                 </p>
-                <StatBar label="Geschwindigkeit" value={bars.speed} />
-                <StatBar label="Manövrierfähigkeit" value={bars.maneuver} />
-                <StatBar label="Panzerung" value={bars.armor} />
-                <StatBar label="Bewaffnung" value={bars.weapons} />
+                <StatBar label="Speed" value={bars.speed} />
+                <StatBar label="Maneuver" value={bars.maneuver} />
+                <StatBar label="Armor" value={bars.armor} />
+                <StatBar label="Weapons" value={bars.weapons} />
                 <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-white/45">
                   <div>
                     HP <span className="glass-mono text-white">{selected.stats.hp}</span>
                   </div>
                   <div>
-                    Raketen{' '}
+                    Missiles{' '}
                     <span className="glass-mono text-white">
                       {selected.stats.missiles > 0 ? selected.stats.missiles : '—'}
                     </span>
                   </div>
                   <div>
-                    Kanone{' '}
+                    Cannon{' '}
                     <span className="glass-mono text-white">
                       {selected.stats.cannonDamage} dmg
                     </span>
@@ -982,13 +983,13 @@ export function Menus({
                   onClick={(ev) => startMission(ev)}
                   title={
                     isJetOwned(hangarFocusId)
-                      ? 'Mission starten'
-                      : 'Zuerst freischalten oder anderen Jet wählen'
+                      ? 'Start mission'
+                      : 'Unlock this jet first, or pick another'
                   }
                 >
                   {isJetOwned(hangarFocusId)
                     ? `TO BATTLE · ${selected.callsign}`
-                    : 'GESPERRT — FREISCHALTEN'}
+                    : 'LOCKED — BUY TO FLY'}
                 </button>
               </aside>
             </div>
@@ -998,7 +999,7 @@ export function Menus({
               <button
                 type="button"
                 className={`hangar-scroll-btn hangar-scroll-btn-left ${hangarCanScrollLeft ? 'is-visible' : ''}`}
-                aria-label="Links"
+                aria-label="Scroll left"
                 disabled={!hangarCanScrollLeft}
                 onClick={() => scrollHangar(-1)}
               >
@@ -1007,7 +1008,7 @@ export function Menus({
               <button
                 type="button"
                 className={`hangar-scroll-btn hangar-scroll-btn-right ${hangarCanScrollRight ? 'is-visible' : ''}`}
-                aria-label="Rechts"
+                aria-label="Scroll right"
                 disabled={!hangarCanScrollRight}
                 onClick={() => scrollHangar(1)}
               >
@@ -1106,17 +1107,17 @@ export function Menus({
                   className="glass-button glass-button-ghost !px-3 !py-1.5 !text-xs"
                   onClick={() => navigateTo('main')}
                 >
-                  ← Zurück
+                  ← Back
                 </button>
               </div>
-              <h2 className="glass-title mb-1 text-3xl">Map wählen</h2>
+              <h2 className="glass-title mb-1 text-3xl">Select map</h2>
               <p className="glass-subtitle mb-4 text-sm">
-                Große Einsatzgebiete — prozedural oder 3D-Assets (nur Maps mit großer Fläche).
+                Large combat theaters — procedural world or a 3D terrain mesh.
               </p>
 
               {mapLoading && (
                 <div className="mb-4 border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100" style={{ borderRadius: 3 }}>
-                  Theater wird geladen und skaliert…
+                  Loading and scaling theater…
                 </div>
               )}
               {mapError && (
@@ -1143,8 +1144,8 @@ export function Menus({
                         {m.name}
                       </div>
                       <div className="mt-1 glass-mono text-xs text-white/45">
-                        {(m.worldSizeM / 1000).toFixed(0)} km Welt
-                        {m.kind === 'glb' ? ` · ~${(m.targetSpanM / 1000).toFixed(0)} km Asset` : ''}
+                        {(m.worldSizeM / 1000).toFixed(0)} km theater
+                        {m.kind === 'glb' ? ` · ~${(m.targetSpanM / 1000).toFixed(0)} km mesh` : ''}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1">
                         {m.tags.map((t) => (
@@ -1160,7 +1161,7 @@ export function Menus({
                       <p className="mt-2 text-[11px] leading-snug text-white/50">{m.description}</p>
                       {active && (
                         <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300">
-                          Aktiv
+                          Active
                         </div>
                       )}
                     </button>
@@ -1169,7 +1170,7 @@ export function Menus({
               </div>
 
               <div className="ops-detail-panel">
-                <div className="text-xs uppercase tracking-[0.16em] text-white/45">Ausgewählt</div>
+                <div className="text-xs uppercase tracking-[0.16em] text-white/45">Selected</div>
                 <div className="mt-1 font-display text-lg font-bold tracking-wide text-[#f0ecd8]">
                   {selectedMap.name}
                 </div>
@@ -1182,7 +1183,7 @@ export function Menus({
                 disabled={mapLoading}
                 onClick={startMission}
               >
-                Mit dieser Map abheben
+                Take off from this map
               </button>
             </div>
           </div>
@@ -1193,18 +1194,18 @@ export function Menus({
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-y-auto px-4 py-6">
             <div className="glass-panel pointer-events-auto w-full max-w-3xl p-6 sm:p-8">
               <div className="mb-1 flex items-center justify-between">
-                <div className="glass-eyebrow">Einsätze</div>
+                <div className="glass-eyebrow">Sorties</div>
                 <button
                   type="button"
                   className="glass-button glass-button-ghost !px-3 !py-1.5 !text-xs"
                   onClick={() => navigateTo('main')}
                 >
-                  ← Zurück
+                  ← Back
                 </button>
               </div>
-              <h2 className="glass-title mb-1 text-3xl">Kampagne</h2>
+              <h2 className="glass-title mb-1 text-3xl">Campaign</h2>
               <p className="glass-subtitle mb-6 text-sm">
-                Wähle deine Mission. Weitere Einsätze werden in zukünftigen Updates freigeschaltet.
+                Pick a mission. Later sorties unlock after you clear the previous one.
               </p>
 
               <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -1242,7 +1243,7 @@ export function Menus({
                       <p className="mission-card-desc">{level.description}</p>
                       {level.primaryObjective && (
                         <p className="mt-1 text-[11px] leading-snug text-white/40">
-                          Ziel: {level.primaryObjective}
+                          Objective: {level.primaryObjective}
                         </p>
                       )}
                       <div className="mt-2 flex flex-wrap gap-1">
@@ -1250,11 +1251,11 @@ export function Menus({
                           {mapName}
                         </span>
                         <span className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/45">
-                          {waves} Wellen
+                          {waves} waves
                         </span>
                         {ground && (
                           <span className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/45">
-                            Boden
+                            Ground
                           </span>
                         )}
                         {level.tags.slice(0, 2).map((t) => (
@@ -1267,7 +1268,7 @@ export function Menus({
                         ))}
                       </div>
                       <div className="mission-difficulty">
-                        Schwierigkeit:{' '}
+                        Difficulty:{' '}
                         <span className="mission-star">{stars}</span>
                         <span className="mission-star-empty">{empty}</span>
                       </div>
@@ -1275,9 +1276,9 @@ export function Menus({
                         +{level.rewardCredits.toLocaleString()} AC
                       </div>
                       {unlocked ? (
-                        <span className={`mission-card-badge ready`}>{done ? '✓ Erneut fliegen' : '🔓 Bereit'}</span>
+                        <span className={`mission-card-badge ready`}>{done ? '✓ Replay' : '🔓 Ready'}</span>
                       ) : (
-                        <span className="mission-card-badge locked-badge">🔒 Level {level.index - 1} abschließen</span>
+                        <span className="mission-card-badge locked-badge">🔒 Clear level {level.index - 1} first</span>
                       )}
                     </div>
                   );
@@ -1306,10 +1307,10 @@ export function Menus({
                   className="glass-button glass-button-ghost !px-3 !py-1.5 !text-xs"
                   onClick={() => navigateTo('main')}
                 >
-                  ← Zurück
+                  ← Back
                 </button>
               </div>
-              <h2 className="glass-title mb-4 text-3xl">Einstellungen</h2>
+              <h2 className="glass-title mb-4 text-3xl">Settings</h2>
               <SettingsBody />
             </div>
           </div>

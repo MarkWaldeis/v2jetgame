@@ -64,21 +64,21 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
     name: 'First Contact',
     codename: 'OPERATION FIRST FLIGHT',
     description:
-      'Trainings-Einsatz über dem Archipel. Langsame Banditen und leichte Flak — keine feindlichen Raketen. Ideal zum Einfliegen.',
+      'Training sortie over the archipelago. Slow bandits and light AAA — no enemy missiles. Best place to learn the jet.',
     mapId: 'islands',
     difficulty: 1,
-    tags: ['Training', 'Keine Raketen', 'AAA'],
+    tags: ['Training', 'No missiles', 'AAA'],
     rewardCredits: 900,
     missionType: 'training',
-    primaryObjective: 'Eliminiere alle feindlichen Aufklärer und Flak-Stellungen.',
-    bonusObjective: 'Keine eigenen Schäden unter 50 % Airframe.',
+    primaryObjective: 'Destroy all enemy scouts and AAA sites.',
+    bonusObjective: 'Keep airframe damage under 50%.',
     briefing:
-      'Willkommen bei Steel Ops. Heute trainierst du Mouse-Aim, Kanone und Situationsbewusstsein. Keine feindlichen Lenkwaffen — nutze die Zeit, um den Jet und das HUD kennenzulernen.',
+      'Welcome to Steel Ops. Today you practice mouse-aim, the cannon, and situational awareness. No enemy missiles — use the time to learn the jet and the HUD.',
     debriefVictory:
-      'Gute Arbeit, Pilot. Basisausbildung bestanden. Credits freigegeben — nächster Schritt: Glacier-Patrouille.',
+      'Good work, pilot. Basic training complete. Credits released — next up is a glacier patrol.',
     waves: [
       {
-        label: 'WELLE 1 · AUFKLÄRER',
+        label: 'WAVE 1 · SCOUTS',
         bandits: 2,
         speedScale: 0.38,
         enemyMissiles: false,
@@ -86,7 +86,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
         sams: 0,
       },
       {
-        label: 'WELLE 2 · FLAK-GÜRTEL',
+        label: 'WAVE 2 · AAA BELT',
         bandits: 3,
         speedScale: 0.42,
         enemyMissiles: false,
@@ -94,7 +94,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
         sams: 0,
       },
       {
-        label: 'WELLE 3 · BODEN + LUFT',
+        label: 'WAVE 3 · AIR AND GROUND',
         bandits: 3,
         speedScale: 0.48,
         enemyMissiles: false,
@@ -109,21 +109,21 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
     name: 'Frost Line',
     codename: 'OPERATION FROST LINE',
     description:
-      'Abfang-Patrouille über dem Glacier. Mehr Banditen, dichtere AAA. Noch keine SAMs — aber die Flak sitzt dich härter.',
+      'Intercept patrol over the glacier. More bandits, denser AAA. Still no SAMs — but the flak hits harder.',
     mapId: 'glacier',
     difficulty: 2,
-    tags: ['Glacier', 'Abfangen', 'AAA'],
+    tags: ['Glacier', 'Intercept', 'AAA'],
     rewardCredits: 1400,
     missionType: 'intercept',
-    primaryObjective: 'Fange die Banditen-Schwärme ab, bevor sie den Korridor freidrücken.',
-    bonusObjective: 'Zerstöre alle AAA-Nester.',
+    primaryObjective: 'Intercept the bandit swarms before they push the corridor.',
+    bonusObjective: 'Destroy every AAA nest.',
     briefing:
-      'Feindliche Jäger drängen über den Glacier-Korridor. Keine SAMs, aber dichte Flak. Halte Energie, nutze Terrain und beende die Wellen schnell.',
+      'Hostile fighters are pushing the glacier corridor. No SAMs, but the flak is thick. Hold energy, use terrain, and finish the waves quickly.',
     debriefVictory:
-      'Korridor gesichert. Glacier bleibt unter Kontrolle. Nächste Stufe: SEAD gegen die ersten Radar-Stellungen.',
+      'Corridor secured. The glacier stays under control. Next: SEAD against the first radar sites.',
     waves: [
       {
-        label: 'WELLE 1 · KALTSTART',
+        label: 'WAVE 1 · COLD START',
         bandits: 3,
         speedScale: 0.55,
         enemyMissiles: false,
@@ -131,7 +131,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
         sams: 0,
       },
       {
-        label: 'WELLE 2 · FLAK-NEST',
+        label: 'WAVE 2 · FLAK NEST',
         bandits: 4,
         speedScale: 0.7,
         enemyMissiles: false,
@@ -139,7 +139,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
         sams: 0,
       },
       {
-        label: 'WELLE 3 · TAL-ÜBERFLUG',
+        label: 'WAVE 3 · VALLEY RUN',
         bandits: 4,
         speedScale: 0.85,
         enemyMissiles: false,
@@ -154,21 +154,21 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
     name: 'Iron Curtain',
     codename: 'OPERATION IRON CURTAIN',
     description:
-      'Erster SEAD-Einsatz. SAMs kommen online, Banditen führen erste Luft-Luft-Raketen. Zerstöre die Stellungen.',
+      'First SEAD sortie. SAMs come online, and bandits start carrying air-to-air missiles. Kill the sites.',
     mapId: 'islands',
     difficulty: 3,
-    tags: ['SEAD', 'SAM', 'Raketen'],
+    tags: ['SEAD', 'SAM', 'Missiles'],
     rewardCredits: 2000,
     missionType: 'sead',
-    primaryObjective: 'Neutralisiere alle SAM-Stellungen und sichere den Luftraum.',
-    bonusObjective: 'Überlebe mit mindestens einer Flare-Salve in Reserve.',
+    primaryObjective: 'Neutralize every SAM site and hold the airspace.',
+    bonusObjective: 'Survive with at least one flare burst left.',
     briefing:
-      'Radar-Netz online. SAM-Batterien und erste feindliche A/A-Raketen. Flares (X/Z) sind jetzt überlebenswichtig. Priorisiere SAMs, wenn die RWR schreit.',
+      'Radar net is live. SAM batteries and the first enemy A/A missiles. Flares (X/Z) keep you alive now. Prioritize SAMs when the RWR screams.',
     debriefVictory:
-      'SAM-Netz niedergekämpft. SEAD-Phase bestanden — du bist bereit für schwere Bergverteidigung.',
+      'SAM net is down. SEAD phase complete — you are ready for the mountain defenses.',
     waves: [
       {
-        label: 'WELLE 1 · RADAR-KONTAKT',
+        label: 'WAVE 1 · RADAR CONTACT',
         bandits: 3,
         speedScale: 0.75,
         enemyMissiles: false,
@@ -177,7 +177,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
         samFireSlow: 1.35,
       },
       {
-        label: 'WELLE 2 · MISSILE ALERT',
+        label: 'WAVE 2 · MISSILE ALERT',
         bandits: 4,
         speedScale: 0.9,
         enemyMissiles: true,
@@ -186,7 +186,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
         samFireSlow: 1.15,
       },
       {
-        label: 'WELLE 3 · SAM-NETZ',
+        label: 'WAVE 3 · SAM NET',
         bandits: 5,
         speedScale: 1.0,
         enemyMissiles: true,
@@ -201,21 +201,21 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
     name: 'Whiteout',
     codename: 'OPERATION WHITEOUT',
     description:
-      'Konvoi-Eskorte über den Bergen. Viele Banditen, aggressive SAMs und AAA. Energy-Management zählt.',
+      'Convoy escort over the mountains. Many bandits, aggressive SAMs and AAA. Energy management matters.',
     mapId: 'glacier',
     difficulty: 4,
-    tags: ['Hard', 'Eskorte', 'Berge'],
+    tags: ['Hard', 'Escort', 'Mountains'],
     rewardCredits: 2800,
     missionType: 'escort',
-    primaryObjective: 'Halte den Bergkorridor freiräumig: alle Wellen und Bodenziele zerstören.',
-    bonusObjective: 'Kein Absturz trotz SAM-Druck.',
+    primaryObjective: 'Keep the mountain corridor clear: finish every wave and ground target.',
+    bonusObjective: 'Do not get shot down under SAM pressure.',
     briefing:
-      'Ein logistischer Konvoi nutzt den Glacier-Pass. Deine Aufgabe: Luftdeckung und SEAD gleichzeitig. Nutze Täler als Deckung, spare Flares für echte Bedrohungen.',
+      'A logistics convoy is using the glacier pass. You fly cover and SEAD at the same time. Use valleys for cover, save flares for real threats.',
     debriefVictory:
-      'Korridor gehalten. Der Konvoi kommt durch. Finale Schlacht wartet auf dem Archipel.',
+      'Corridor held. The convoy gets through. The final battle waits on the archipelago.',
     waves: [
       {
-        label: 'WELLE 1 · BERG-PATROUILLE',
+        label: 'WAVE 1 · MOUNTAIN PATROL',
         bandits: 4,
         speedScale: 1.0,
         enemyMissiles: true,
@@ -223,7 +223,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
         sams: 2,
       },
       {
-        label: 'WELLE 2 · DOPPEL-GÜRTEL',
+        label: 'WAVE 2 · DOUBLE BELT',
         bandits: 5,
         speedScale: 1.05,
         enemyMissiles: true,
@@ -231,7 +231,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
         sams: 3,
       },
       {
-        label: 'WELLE 3 · STURMFRONT',
+        label: 'WAVE 3 · STORM FRONT',
         bandits: 6,
         speedScale: 1.1,
         enemyMissiles: true,
@@ -246,21 +246,21 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
     name: 'Final Storm',
     codename: 'OPERATION FINAL STORM',
     description:
-      'Finale Schlacht. Massive Luftflotte, dichter SAM-Ring und Flak. Nur für erfahrene Piloten.',
+      'Final battle. A large air force, a dense SAM ring, and heavy flak. For experienced pilots only.',
     mapId: 'islands',
     difficulty: 5,
     tags: ['Boss', 'Maximum', 'Strike'],
     rewardCredits: 4200,
     missionType: 'strike',
-    primaryObjective: 'Breche die feindliche Hauptverteidigung und beende alle drei Wellen.',
-    bonusObjective: 'Sieg mit einem Top-Tier-Jet freischalten.',
+    primaryObjective: 'Break the main defense and finish all three waves.',
+    bonusObjective: 'Win in a top-tier jet.',
     briefing:
-      'Gesamte feindliche Luft- und Bodenverteidigung. Dies ist der Härtetest: Energy fight, Flares, SEAD und Dogfight in einem. Kein Raum für Fehler.',
+      'The full enemy air and ground defense. This is the test: energy fighting, flares, SEAD, and a dogfight in one. No room for mistakes.',
     debriefVictory:
-      'Final Storm beendet. Steel Ops ist stolz — Kampagne abgeschlossen. Wiederhole Missionen für Farming-Credits (25 % Wiederholungsbonus).',
+      'Final Storm is over. Steel Ops is proud — campaign complete. Replay missions for farming credits (25% repeat bonus).',
     waves: [
       {
-        label: 'WELLE 1 · ERSTE WELLE',
+        label: 'WAVE 1 · FIRST PUSH',
         bandits: 5,
         speedScale: 1.05,
         enemyMissiles: true,
@@ -268,7 +268,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
         sams: 3,
       },
       {
-        label: 'WELLE 2 · VOLLER DRUCK',
+        label: 'WAVE 2 · FULL PRESSURE',
         bandits: 6,
         speedScale: 1.15,
         enemyMissiles: true,
@@ -276,7 +276,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
         sams: 4,
       },
       {
-        label: 'WELLE 3 · LETZTER ANGRIFF',
+        label: 'WAVE 3 · LAST ATTACK',
         bandits: 7,
         speedScale: 1.2,
         enemyMissiles: true,

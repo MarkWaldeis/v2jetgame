@@ -58,9 +58,9 @@ export const MAP_CATALOG: MapDef[] = [
   {
     id: 'islands',
     name: 'Stormbreak Archipelago',
-    subtitle: 'Vulkaninseln · Naval Air Station',
+    subtitle: 'Volcanic islands · naval air station',
     description:
-      '42 × 42 km Pazifik-Welt mit Vulkan-Caldera, Fjord-Canyons, dynamischem Ozean, Dörfern und Marineflugplatz.',
+      'A 42 × 42 km Pacific theater: volcanic caldera, fjord canyons, a live ocean, villages, and a naval air station.',
     kind: 'procedural',
     targetSpanM: 42000,
     worldSizeM: 42000,
@@ -69,7 +69,7 @@ export const MAP_CATALOG: MapDef[] = [
     showSea: true,
     fogFar: 34000,
     spawnClearance: 950,
-    tags: ['Neu', '42 km', 'Ozean', 'Militärbasis'],
+    tags: ['New', '42 km', 'Ocean', 'Airbase'],
     // Naval Air Station Kestrel: befestigte Piste bei (0, 3200), siehe StormbreakTerrain.buildAirbase().
     // Deckt die sichtbare Betonplatte + Asphaltbahn aus StormbreakTerrain.buildAirbase() ab.
     runway: {
@@ -86,7 +86,7 @@ export const MAP_CATALOG: MapDef[] = [
     name: 'Glacier National Park',
     subtitle: 'Montana · Terrain',
     description:
-      'Riesige Berglandschaft aus echtem 3D-Terrain. Nach Skalierung ~28 km Kante — weite Täler und Gipfel.',
+      'A vast mountain range from a 3D terrain mesh. After scale it is about 28 km across — open valleys and peaks.',
     kind: 'glb',
     modelUrl: './maps/glacier.glb',
     // Roh ~167 km → auf ~28 km bringen (noch groß, Mesh bleibt sichtbar)
@@ -98,7 +98,7 @@ export const MAP_CATALOG: MapDef[] = [
     fogFar: 22000,
     spawnClearance: 600,
     heightMode: 'raycast',
-    tags: ['Groß', 'Berge', 'Terrain'],
+    tags: ['Large', 'Mountains', 'Terrain'],
   },
 ];
 

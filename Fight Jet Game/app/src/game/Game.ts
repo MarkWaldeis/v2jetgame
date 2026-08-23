@@ -449,16 +449,16 @@ export class Game {
     onProgress: (pct: number, text: string) => void,
   ): Promise<void> {
     const steps: { pct: number; text: string }[] = [
-      { pct: 10, text: 'Lade Jet-Modell...' },
-      { pct: 35, text: 'Bewaffnung kalibrieren...' },
-      { pct: 50, text: 'Lade Karte...' },
-      { pct: 70, text: 'Terrain generieren...' },
-      { pct: 85, text: 'Gegner platzieren...' },
-      { pct: 95, text: 'Systeme hochfahren...' },
-      { pct: 100, text: 'Startbereit!' },
+      { pct: 10, text: 'Loading airframe...' },
+      { pct: 35, text: 'Arming weapons...' },
+      { pct: 50, text: 'Loading theater...' },
+      { pct: 70, text: 'Generating terrain...' },
+      { pct: 85, text: 'Spawning hostiles...' },
+      { pct: 95, text: 'Spooling systems...' },
+      { pct: 100, text: 'Ready' },
     ];
 
-    onProgress(0, 'Initialisiere...');
+    onProgress(0, 'Initializing...');
 
     // Step 1: Select jet (loads GLB + missile visuals)
     onProgress(5, steps[0].text);
@@ -471,7 +471,7 @@ export class Game {
 
     // Preload the jet visual
     const template = await this.loadJetTemplate(jetId);
-    onProgress(20, 'Verarbeite Jet-Geometrie...');
+    onProgress(20, 'Processing airframe...');
     if (template) {
       this.player.applyFlightPhysics(jetDef.physics, jetDef.engineType);
       const instance = template.clone(true);
@@ -499,7 +499,7 @@ export class Game {
     // Step 3: Map loading
     const mapDef = getMapDef(mapId);
     if (mapDef.kind === 'glb') {
-      onProgress(55, 'Lade 3D-Terrain...');
+      onProgress(55, 'Loading 3D terrain...');
       let map = this.mapCache.get(mapId);
       if (!map) {
         const loaded = await loadGlbMap(mapDef);
@@ -884,10 +884,10 @@ export class Game {
 
     if (player.consumeLandedEvent()) {
       player.rearmMissiles();
-      this.waveBanner = 'GELANDET · RAKETEN NACHGELADEN · B = BREMSE';
+      this.waveBanner = 'TOUCHDOWN · MISSILES REARMED · B = BRAKE';
       this.waveBannerTimer = 4.5;
     } else if (player.consumeTookOffEvent()) {
-      this.waveBanner = 'ABGEHOBEN · FAHRWERK FÄHRT EIN';
+      this.waveBanner = 'AIRBORNE · GEAR RETRACTING';
       this.waveBannerTimer = 3.5;
     }
 
@@ -1563,7 +1563,7 @@ export class Game {
       const gearContactY = terrainYForGear + p.loadout.landingGear.groundClearance;
       const gearAgl = p.position.y - gearContactY;
       if (gearAgl < 260 && p.flight.speed < p.loadout.landingGear.landingSpeed * 1.6) {
-        warning = 'FAHRWERK AUSFAHREN (B)';
+        warning = 'GEAR DOWN (B)';
       }
     }
 

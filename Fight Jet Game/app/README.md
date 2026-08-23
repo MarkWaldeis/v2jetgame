@@ -1,6 +1,6 @@
 # Fight Jet 3D (`fight-jet-3d`)
 
-Browserbasiertes Singleplayer-Jet-Combat (Three.js + React + TypeScript + Vite).
+Browser-based single-player jet combat (Three.js + React + TypeScript + Vite). English UI.
 
 **Live:** [https://markwaldeis.github.io/v2jetgame/](https://markwaldeis.github.io/v2jetgame/)
 
@@ -24,33 +24,33 @@ npm run test:smoke   # Puppeteer-Smoke (benötigt Chromium)
 npm run test:assets  # Hangar/Jet-Ladebericht
 ```
 
-## Steuerung
+## Controls
 
-| Taste | Aktion |
+| Key | Action |
 |---|---|
-| **Maus** | Virtual Aim Point (FBW) |
-| S / W | Pitch (Manual Override) |
-| A / D | Rollen |
-| Q / E | Seitenruder |
-| Shift / Strg / Mausrad | Schub |
-| Tab | Nachbrenner / WEP |
-| B | Luftbremse |
-| Leertaste | Bordkanone |
-| **F** oder **M** | Lenkwaffe (nach Lock-On) |
-| **R** | Kanonen nachladen |
-| **X** oder **Z** | Flares |
-| **C halten** / RMB | Free-Look |
-| **V** | Cockpit- / Chase-Kamera |
+| **Mouse** | Aim point (fly-by-wire) |
+| S / W | Pitch (manual override) |
+| A / D | Roll |
+| Q / E | Rudder |
+| Shift / Ctrl / mouse wheel | Throttle |
+| Tab | Afterburner / WEP |
+| B | Gear (air) · brake (ground) |
+| Space | Cannon |
+| **F** or **M** | Missile (after lock) |
+| **R** | Reload cannon |
+| **X** or **Z** | Flares |
+| **C hold** / RMB | Free-look |
+| **V** | Cockpit / chase camera |
 | P / Esc | Pause |
-| Enter | Start / Neustart (Menü) |
+| Enter | Start / restart (menu) |
 
 ## Browser
 
-Desktop mit WebGL 2 (Chrome, Edge, Firefox empfohlen). Mobile/Touch und Multiplayer sind nicht Ziel von v1.
+Desktop with WebGL 2 (Chrome, Edge, Firefox). Mobile/touch and multiplayer are not in v1.
 
-## Grafikqualität
+## Graphics
 
-Einstellungen → Low / Medium / High steuern Pixelratio, Wolkenanzahl, Partikel und Sichtweite **ohne Reload**.
+Settings → Low / Medium / High change pixel ratio, clouds, particles, and view distance **without a reload**.
 
 ## Ökonomie
 

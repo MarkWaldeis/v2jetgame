@@ -72,7 +72,7 @@ export default function App() {
   const [hud, setHud] = useState<HudData>(initialHud);
   const [phase, setPhase] = useState<AppPhase>('menu');
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingText, setLoadingText] = useState('Initialisiere...');
+  const [loadingText, setLoadingText] = useState('Initializing...');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
   const [showDesktopHint, setShowDesktopHint] = useState(() => {
@@ -99,7 +99,7 @@ export default function App() {
     } catch (err) {
       console.error('WebGL/Engine-Start fehlgeschlagen:', err);
       setBootError(
-        'WebGL ist nicht verfügbar. Bitte Chrome, Edge oder Firefox auf einem Desktop nutzen.'
+        'WebGL is not available. Please use Chrome, Edge, or Firefox on a desktop.'
       );
       return;
     }
@@ -194,12 +194,12 @@ export default function App() {
   const onStart = useCallback(async (id: JetId) => {
     if (phaseRef.current === 'loading') return;
     if (!gameRef.current) {
-      console.error('Spiel-Engine nicht bereit');
-      setLoadError('Spiel-Engine nicht bereit');
+      console.error('Game engine not ready');
+      setLoadError('Game engine is not ready.');
       return;
     }
     if (!isJetOwned(id)) {
-      setLoadError('Dieses Flugzeug ist noch nicht freigeschaltet.');
+      setLoadError('This aircraft is still locked.');
       updatePhase('menu');
       return;
     }
@@ -207,7 +207,7 @@ export default function App() {
     setLoadError(null);
     updatePhase('loading');
     setLoadingProgress(0);
-    setLoadingText('Menü-3D freigeben…');
+    setLoadingText('Releasing hangar preview…');
 
     // 1) React unmountet Menü/JetPreview (phase=loading → Menus weg)
     // 2) GPU-Preview-Renderer hart freigeben (WebGL-Limit)
@@ -220,7 +220,7 @@ export default function App() {
 
     const mapId = mapIdRef.current;
     try {
-      setLoadingText('Lade Mission…');
+      setLoadingText('Loading mission…');
       await gameRef.current.preloadAllAssets(id, mapId, (pct, text) => {
         setLoadingProgress(pct);
         setLoadingText(text);
@@ -228,15 +228,15 @@ export default function App() {
       gameRef.current.prepareForGameplay();
       // Doppel-Check: State wirklich playing
       if (gameRef.current.getState() !== 'playing') {
-        throw new Error('Mission konnte nicht gestartet werden (State=' + gameRef.current.getState() + ')');
+        throw new Error('Mission failed to start (state=' + gameRef.current.getState() + ')');
       }
       updatePhase('playing');
       // Noch ein Resize nach Sichtbarkeit (opacity 1)
       await waitFrames(1);
       gameRef.current.prepareForGameplay();
     } catch (err) {
-      console.error('Fehler beim Laden:', err);
-      setLoadError(err instanceof Error ? err.message : 'Unbekannter Ladefehler');
+      console.error('Load failed:', err);
+      setLoadError(err instanceof Error ? err.message : 'Unknown load error');
       try {
         gameRef.current.returnToMenu();
       } catch {
@@ -267,7 +267,7 @@ export default function App() {
       try {
         await gameRef.current.selectMap(level.mapId);
       } catch (e) {
-        console.warn('Kampagnen-Map laden fehlgeschlagen, starte trotzdem:', e);
+        console.warn('Campaign map failed to load, starting anyway:', e);
       }
       await onStart(jetId);
     },
@@ -293,7 +293,7 @@ export default function App() {
       <div className="flex h-screen w-screen items-center justify-center bg-[#080a07] px-6 text-center">
         <div className="max-w-md">
           <div className="mb-2 text-xs uppercase tracking-[0.2em] text-amber-300/70">Fight Jet 3D</div>
-          <h1 className="mb-3 text-2xl font-bold text-[#e8e6d4]">Start nicht möglich</h1>
+          <h1 className="mb-3 text-2xl font-bold text-[#e8e6d4]">Unable to start</h1>
           <p className="text-sm text-white/60">{bootError}</p>
         </div>
       </div>
@@ -316,16 +316,16 @@ export default function App() {
           className="pointer-events-auto fixed bottom-4 left-1/2 z-[70] w-[min(92vw,28rem)] -translate-x-1/2 border border-amber-500/35 bg-black/90 px-4 py-3 text-center text-sm text-amber-100"
           style={{ borderRadius: 3 }}
         >
-          <div className="font-semibold tracking-wide">Desktop empfohlen</div>
+          <div className="font-semibold tracking-wide">Desktop recommended</div>
           <div className="mt-1 text-xs text-white/55">
-            Fight Jet 3D ist für Maus + Tastatur im Desktop-Browser gebaut.
+            Fight Jet 3D is built for mouse and keyboard in a desktop browser.
           </div>
           <button
             type="button"
             className="mt-2 text-xs uppercase tracking-wider text-amber-300 underline"
             onClick={() => setShowDesktopHint(false)}
           >
-            Trotzdem spielen
+            Play anyway
           </button>
         </div>
       )}
@@ -424,14 +424,14 @@ export default function App() {
           className="pointer-events-auto fixed left-1/2 top-4 z-[60] max-w-md -translate-x-1/2 border border-red-500/40 bg-black/90 px-4 py-3 text-center text-sm text-red-200"
           style={{ borderRadius: 3 }}
         >
-          <div className="font-semibold tracking-wide">Start fehlgeschlagen</div>
+          <div className="font-semibold tracking-wide">Launch failed</div>
           <div className="mt-1 text-xs text-white/60">{loadError}</div>
           <button
             type="button"
             className="mt-2 text-xs uppercase tracking-wider text-amber-300 underline"
             onClick={() => setLoadError(null)}
           >
-            Schließen
+            Dismiss
           </button>
         </div>
       )}

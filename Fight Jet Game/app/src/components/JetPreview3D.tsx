@@ -252,7 +252,7 @@ export function JetPreview3D({
         console.error('[JetPreview3D]', jetId, err);
         if (!disposed) {
           setStatus('error');
-          setErrMsg(err instanceof Error ? err.message : 'Modell konnte nicht geladen werden');
+          setErrMsg(err instanceof Error ? err.message : 'Model failed to load');
         }
       });
 
@@ -301,17 +301,17 @@ export function JetPreview3D({
       {status === 'loading' && (
         <div className="jet-preview3d-status">
           <div className="jet-preview3d-spinner" />
-          <span>Airframe laden…</span>
+          <span>Loading airframe…</span>
         </div>
       )}
       {status === 'error' && (
         <div className="jet-preview3d-status is-error">
-          <span>Modell-Fehler</span>
+          <span>Model error</span>
           {errMsg && <span className="jet-preview3d-err">{errMsg}</span>}
         </div>
       )}
-      {status === 'ready' && interactive && mode !== 'thumb' && (
-        <div className="jet-preview3d-hint">Ziehen · Scrollen zoomt</div>
+      {status === 'ready' && interactive && mode === 'hangar' && (
+        <div className="jet-preview3d-hint">Drag · scroll to zoom</div>
       )}
     </div>
   );

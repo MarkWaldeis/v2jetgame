@@ -187,9 +187,9 @@ export const JET_CATALOG: JetDef[] = [
     faction: 'nato',
     name: 'F-16 Fighting Falcon',
     callsign: 'VIPER 01',
-    role: 'Multirole · Ausgewogen',
+    role: 'Multirole · balanced',
     description:
-      'Der agile Multirole-Klassiker. Gute Wendigkeit, M61 Vulcan und Sidewinder. Ideal zum Einsteigen.',
+      'The agile multirole classic. Solid turn rate, an M61 Vulcan, and Sidewinders. Best jet to learn on.',
     modelUrl: './models/player-jet.glb',
     price: 0,
     landingGear: {
@@ -205,7 +205,7 @@ export const JET_CATALOG: JetDef[] = [
       landingSpeed: 82,
       retractSpeed: 2.1,
     },
-    traits: ['Wendig', 'Vulcan', '6× AIM-9'],
+    traits: ['Agile', 'Vulcan', '6× AIM-9'],
     era: 'modern',
     engineType: 'jet',
     physics: { ...MODERN_JET_PHYSICS },
@@ -226,7 +226,7 @@ export const JET_CATALOG: JetDef[] = [
     special: {
       id: 'vulcan',
       label: 'M61 Vulcan',
-      detail: 'Hohe Feuerrate, präzise Dogfight-Kanone',
+      detail: 'High rate of fire, a precise dogfight gun',
     },
     // Düse: Geometrie misst final; Katalog = Twin/Scale-Hinweis + weiche Bias
     fx: singleNozzle(-0.15, 7.15, 0.72, 6.5, [
@@ -242,7 +242,7 @@ export const JET_CATALOG: JetDef[] = [
     callsign: 'GHOST 07',
     role: 'Stealth · BVR',
     description:
-      'Tarnkappen-Jäger der 5. Generation. Starke Sensoren und BVR-Raketen, in engen Kurven etwas träger.',
+      'Fifth-generation stealth fighter. Strong sensors and BVR missiles; a little heavier in a tight turn.',
     modelUrl: './models/f35.glb',
     price: 1800,
     landingGear: {
@@ -258,7 +258,7 @@ export const JET_CATALOG: JetDef[] = [
       landingSpeed: 86,
       retractSpeed: 2.4,
     },
-    traits: ['Stealth', 'BVR-Lock', '8× AMRAAM'],
+    traits: ['Stealth', 'BVR lock', '8× AMRAAM'],
     era: 'modern',
     engineType: 'jet',
     physics: { ...MODERN_JET_PHYSICS, windSusceptibility: 0.2 },
@@ -279,7 +279,7 @@ export const JET_CATALOG: JetDef[] = [
     special: {
       id: 'amraam',
       label: 'AMRAAM Suite',
-      detail: 'Schneller Lock, große Reichweite',
+      detail: 'Fast lock, long reach',
     },
     fx: singleNozzle(-0.22, 7.05, 0.75, 6.3, [
       [-2.9, -0.35, -1.4], [2.9, -0.35, -1.4],
@@ -295,7 +295,7 @@ export const JET_CATALOG: JetDef[] = [
     callsign: 'TOMCAT 2',
     role: 'Interceptor · Fleet Defense',
     description:
-      'Navy-Legende mit Schwenkflügeln und AIM-54 Phoenix. Sehr schnell in gerader Linie, schwer und träge in engen Turns.',
+      'Navy legend with swing wings and the AIM-54 Phoenix. Fast in a straight line, heavy and sluggish in a tight turn.',
     modelUrl: './models/f14.glb',
     price: 2500,
     landingGear: {
@@ -332,7 +332,7 @@ export const JET_CATALOG: JetDef[] = [
     special: {
       id: 'phoenix',
       label: 'AIM-54 Phoenix',
-      detail: 'Lange BVR-Reichweite, starke Raketen',
+      detail: 'Long BVR reach, heavy missiles',
     },
     fx: twinNozzle(1.05, -0.48, 6.72, 0.9, 8.5, [
       [-3.9, -0.45, -2.0], [3.9, -0.45, -2.0],
@@ -347,7 +347,7 @@ export const JET_CATALOG: JetDef[] = [
     callsign: 'ALBA 4',
     role: 'Trainer · Light Attack',
     description:
-      'Leichter Trainer/Angriffsjet. Langsam, aber wendig und übersichtlich — gut für Anfänger und Bodenziele.',
+      'Light trainer and attack jet. Slow, but nimble and easy to read — good for beginners and ground targets.',
     modelUrl: './models/l39.glb',
     price: 1200,
     landingGear: {
@@ -363,7 +363,7 @@ export const JET_CATALOG: JetDef[] = [
       landingSpeed: 68,
       retractSpeed: 1.9,
     },
-    traits: ['Wendig', 'Leicht', 'CAS-Light'],
+    traits: ['Nimble', 'Light', 'Light CAS'],
     era: 'modern',
     engineType: 'jet',
     physics: {
@@ -391,7 +391,7 @@ export const JET_CATALOG: JetDef[] = [
     special: {
       id: 'trainer',
       label: 'Light Frame',
-      detail: 'Sehr wendig, niedrige Stall-Geschwindigkeit',
+      detail: 'Very nimble, low stall speed',
     },
     fx: singleNozzle(-0.32, 7.70, 0.78, 5.4, [
       [-2.5, -0.35, -1.2], [2.5, -0.35, -1.2],
@@ -401,11 +401,11 @@ export const JET_CATALOG: JetDef[] = [
   {
     id: 'elite',
     faction: 'nato',
-    name: 'Elite-Jäger',
+    name: 'Elite Interceptor',
     callsign: 'RAZOR 9',
-    role: 'Interceptor · Experimental',
+    role: 'Interceptor · experimental',
     description:
-      'Experimenteller High-Speed-Interceptor. Extrem schnell, Rail-Burst-Kanone, schwere IR-Raketen und starke Flare-Gegenmaßnahmen.',
+      'Experimental high-speed interceptor. Extremely fast, a rail-burst cannon, heavy IR missiles, and a deep flare magazine.',
     modelUrl: './models/elite-jaeger.glb',
     price: 3200,
     landingGear: {
@@ -442,7 +442,7 @@ export const JET_CATALOG: JetDef[] = [
     special: {
       id: 'railburst',
       label: 'Rail-Burst + Flares',
-      detail: 'Wuchtige Schüsse, enge Streuung · X = Flares gegen SAMs',
+      detail: 'Hard hits, tight spread · X = flares against SAMs',
     },
     fx: twinNozzle(0.78, -0.42, 7.15, 0.72, 6.2, [
       [-2.9, -0.4, -1.5], [2.9, -0.4, -1.5],
@@ -457,9 +457,9 @@ export const JET_CATALOG: JetDef[] = [
     faction: 'russia',
     name: 'Su-25 Grach',
     callsign: 'FROG 11',
-    role: 'CAS · Panzerjäger',
+    role: 'CAS · tank buster',
     description:
-      'Gepanzerter Erdkampfflugzeug. Langsam, aber extrem robust — ideal gegen SAM und Bodenziele, im Dogfight im Nachteil.',
+      'Armored ground-attack jet. Slow, but extremely tough — made for SAMs and ground targets, at a disadvantage in a dogfight.',
     modelUrl: './models/su25.glb',
     price: 0,
     landingGear: {
@@ -475,7 +475,7 @@ export const JET_CATALOG: JetDef[] = [
       landingSpeed: 74,
       retractSpeed: 1.55,
     },
-    traits: ['Panzerung', 'CAS', '30mm GSh'],
+    traits: ['Armor', 'CAS', '30mm GSh'],
     era: 'modern',
     engineType: 'jet',
     physics: {
@@ -502,8 +502,8 @@ export const JET_CATALOG: JetDef[] = [
     missile: { id: 'r73', label: 'R-73', seekerType: 'ir' },
     special: {
       id: 'armor',
-      label: 'Titanwanne',
-      detail: 'Sehr hohe Struktur-HP, stark gegen Bodenfeuer',
+      label: 'Titanium bathtub',
+      detail: 'Very high airframe HP, strong against ground fire',
     },
     fx: twinNozzle(0.65, -0.62, 6.38, 0.78, 6.8, [
       [-3.1, -0.5, -1.5], [3.1, -0.5, -1.5],
@@ -517,7 +517,7 @@ export const JET_CATALOG: JetDef[] = [
     callsign: 'PLATYPUS',
     role: 'Strike · Fighter-Bomber',
     description:
-      'Schwerer Jagdbomber mit starker Bewaffnung. Solide Geschwindigkeit, mittlere Wendigkeit, viele Raketen.',
+      'Heavy fighter-bomber with a large loadout. Solid speed, average turn, plenty of missiles.',
     modelUrl: './models/su34.glb',
     price: 2200,
     landingGear: {
@@ -554,7 +554,7 @@ export const JET_CATALOG: JetDef[] = [
     special: {
       id: 'strike',
       label: 'Strike Loadout',
-      detail: 'Viele Raketen, robuste Zelle',
+      detail: 'Many missiles, a tough airframe',
     },
     // Twin-Düsen eng unter dem Rumpf (nicht flügelweit)
     fx: twinNozzle(0.72, -0.52, 10.15, 0.7, 7.8, [
@@ -571,7 +571,7 @@ export const JET_CATALOG: JetDef[] = [
     callsign: 'FELON 1',
     role: 'Stealth · Air Superiority',
     description:
-      'Russisches 5.-Gen-Jagdflugzeug. Schnell, wendig, starke Elektronik und umfangreiche Flare-Gegenmaßnahmen.',
+      'Russian fifth-generation fighter. Fast, agile, strong electronics, and a deep flare magazine.',
     modelUrl: './models/su57.glb',
     price: 2800,
     landingGear: {
@@ -609,7 +609,7 @@ export const JET_CATALOG: JetDef[] = [
     special: {
       id: 'supermaneuver',
       label: 'Supermaneuver + Flares',
-      detail: 'Hohe Wendigkeit · X = Flares gegen SAMs (50/50 Spoof)',
+      detail: 'High agility · X = flares against SAMs (50/50 spoof)',
     },
     // Twin AL-41F: enger am Rumpf als Geometrie-Heckbreite vermuten lässt
     fx: twinNozzle(0.95, -0.28, 6.45, 0.78, 7.2, [
@@ -622,7 +622,7 @@ export const JET_CATALOG: JetDef[] = [
 
 export const FACTION_LABELS: Record<JetFaction, string> = {
   nato: 'NATO / West',
-  russia: 'Russland / Sowjet',
+  russia: 'Russia / Soviet',
 };
 
 export function getJetDef(id: JetId): JetDef {

@@ -64,7 +64,7 @@ export async function loadGlbMap(def: MapDef): Promise<LoadedGlbMap> {
 
   if (rawSpan < MIN_MAP_SPAN_M) {
     throw new Error(
-      `Map ${def.id} zu klein (Span ${rawSpan.toFixed(0)} m < ${MIN_MAP_SPAN_M} m)`
+      `Map ${def.id} is too small (span ${rawSpan.toFixed(0)} m < ${MIN_MAP_SPAN_M} m)`
     );
   }
 

@@ -39,7 +39,7 @@ Cover-Empfehlung itch.io: ca. 630×500. Unsere Key-Art ist 4:3 und wird von itch
 |---|---|
 | **Title** | Fight Jet 3D |
 | **Project URL** | `fight-jet-3d` (oder frei, solange frei ist) |
-| **Short description / tagline** | Arcade-Kampfjet im Browser. Acht Jets, zwei Karten, Kampagne. |
+| **Short description / tagline** | Arcade jet combat in the browser. Eight jets, two maps, a short campaign. |
 | **Classification** | Games |
 | **Kind of project** | **HTML** |
 | **Release status** | Released |
@@ -66,6 +66,7 @@ Take off in an F-16 or Su-25, earn Aero Credits, unlock more airframes, and fly 
 No download, no account, no multiplayer. Progress stays in your browser.
 
 Desktop with mouse + keyboard. Chrome, Edge, or Firefox with WebGL.
+The first load can take a minute (large 3D models). English UI.
 
 Controls
 - Mouse: aim (fly-by-wire)

@@ -225,7 +225,7 @@ export const CONFIG = {
         sams: 0,
         speedScale: 0.4,
         enemyMissiles: false,
-        label: 'WELLE 1 · TRAINING',
+        label: 'WAVE 1 · TRAINING',
       },
     ],
     waveDelay: 3.2,

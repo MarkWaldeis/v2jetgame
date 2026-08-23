@@ -1828,19 +1828,21 @@
 }
 
 .glass-toggle {
+  appearance: none;
+  -webkit-appearance: none;
   position: relative;
   width: 48px;
   height: 26px;
   border-radius: var(--radius-xs);
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(138, 148, 110, 0.3);
+  background: rgba(0, 0, 0, 0.55) !important;
+  border: 1px solid rgba(138, 148, 110, 0.45);
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease;
   flex-shrink: 0;
 }
 
 .glass-toggle.is-on {
-  background: linear-gradient(180deg, #a8861e, #6b5814);
+  background: linear-gradient(180deg, #a8861e, #6b5814) !important;
   border-color: rgba(232, 200, 90, 0.5);
 }
 

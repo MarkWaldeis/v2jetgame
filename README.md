@@ -1,6 +1,6 @@
 # Fight Jet 3D
 
-Browserbasiertes 3D-Kampfjet-Spiel (Singleplayer): acht Jets, zwei Karten, Kanone + Lenkwaffen, SAM/AAA, Flares, Hangar und lokale Progression.
+Browserbasiertes 3D-Kampfjet-Spiel (Singleplayer, **English UI**): acht Jets, zwei Karten, Kanone + Lenkwaffen, SAM/AAA, Flares, Hangar und lokale Progression.
 
 **Spielen (GitHub Pages):** [https://markwaldeis.github.io/v2jetgame/](https://markwaldeis.github.io/v2jetgame/)
 
