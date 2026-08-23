@@ -1,14 +1,15 @@
 {
   "name": "fight-jet-3d",
   "private": true,
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
     "lint": "eslint .",
-    "preview": "vite preview",
+    "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
+    "package:itch": "npm run build && node scripts/package-itch.mjs",
     "test:map": "node map-test.mjs",
     "test:map-visual": "node map-visual-test.mjs",
     "test:smoke": "node smoke-test.mjs",

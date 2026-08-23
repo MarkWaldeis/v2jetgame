@@ -57,7 +57,16 @@ export class Input {
     if (e.repeat) return;
     this.keys.add(e.code);
     this.pressedThisFrame.add(e.code);
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+    // Tab/Space/Pfeile nicht an den Browser (itch.io-iframe, Scroll, Fokus).
+    if (
+      e.code === 'Tab' ||
+      e.code === 'Space' ||
+      e.code.startsWith('Arrow') ||
+      e.code === 'KeyB' ||
+      e.code === 'KeyF' ||
+      e.code === 'KeyM' ||
+      e.code === 'KeyP'
+    ) {
       e.preventDefault();
     }
   };

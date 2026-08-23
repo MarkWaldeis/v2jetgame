@@ -1,4 +1,8 @@
-# 🛩️ Fight Jet 3D
+# Fight Jet 3D
+
+Aktueller Stand, Steuerung und itch.io-Upload: siehe das Root-[README](../README.md) und [ITCH_IO.md](../ITCH_IO.md). Unten bleibt die ursprüngliche Feature-Notiz.
+
+# 🛩️ Fight Jet 3D (Projektnotiz)
 
 Browserbasiertes 3D-Kampfjet-Spiel: F-16 „Viper" im USAF-Look fliegen, 3-Wellen-Mission
 mit KI-Bandits und SEAD gegen SAM-Stellungen, Bordkanone + AIM-9 mit Lock-On,

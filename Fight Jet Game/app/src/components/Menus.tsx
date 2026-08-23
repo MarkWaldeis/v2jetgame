@@ -29,7 +29,7 @@ import {
 import { gameAudio } from '../game/audio/SoundManager';
 
 type Screen = 'main' | 'hangar' | 'maps' | 'missions' | 'settings';
-type SettingsTab = 'graphics' | 'sound' | 'controls';
+type SettingsTab = 'graphics' | 'sound' | 'controls' | 'about';
 
 /** UI-SFX (init auf User-Geste via AudioContext). */
 function sfx(kind: 'click' | 'hover' | 'nav' | 'confirm' | 'deny' | 'purchase' | 'start') {
@@ -420,25 +420,27 @@ export function Menus({
       )}
 
       <div className="topbar-spacer" />
-      <button
-        type="button"
-        className="topbar-chip pointer-events-auto"
-        onClick={(ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          handleUnlockAllJets();
-        }}
-        title="Alle Flugzeuge freischalten"
-      >
-        <span className="topbar-chip-icon" aria-hidden="true">
-          ✦
-        </span>
-        <div className="min-w-0 text-left">
-          <div className="topbar-chip-label">Unlock</div>
-          <div className="topbar-chip-value truncate">Alle Jets</div>
-          <div className="topbar-chip-sub truncate">Freischalten</div>
-        </div>
-      </button>
+      {import.meta.env.DEV && (
+        <button
+          type="button"
+          className="topbar-chip pointer-events-auto"
+          onClick={(ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            handleUnlockAllJets();
+          }}
+          title="Dev: alle Flugzeuge freischalten"
+        >
+          <span className="topbar-chip-icon" aria-hidden="true">
+            ✦
+          </span>
+          <div className="min-w-0 text-left">
+            <div className="topbar-chip-label">Unlock</div>
+            <div className="topbar-chip-value truncate">Alle Jets</div>
+            <div className="topbar-chip-sub truncate">nur Dev</div>
+          </div>
+        </button>
+      )}
       <CreditsBadge compact />
     </div>
   );
@@ -487,6 +489,7 @@ export function Menus({
             ['graphics', 'Grafik'],
             ['sound', 'Sound'],
             ['controls', 'Steuerung'],
+            ['about', 'Credits'],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -535,20 +538,22 @@ export function Menus({
             />
           </div>
 
-          <div className="border-t border-white/10 pt-4">
-            <div className="mb-2 text-xs tracking-[0.16em] text-white/50 uppercase">Hangar</div>
-            <button
-              type="button"
-              className="glass-button glass-button-primary w-full py-3 text-sm font-bold uppercase tracking-[0.12em]"
-              onClick={handleUnlockAllJets}
-              title="Schaltet alle Katalog-Jets im Hangar frei"
-            >
-              Alle Flugzeuge freischalten
-            </button>
-            <p className="mt-2 text-xs text-white/40">
-              Ein Klick: alle Jets im Hangar freischalten (lokal gespeichert).
-            </p>
-          </div>
+          {import.meta.env.DEV && (
+            <div className="border-t border-white/10 pt-4">
+              <div className="mb-2 text-xs tracking-[0.16em] text-white/50 uppercase">Hangar · Dev</div>
+              <button
+                type="button"
+                className="glass-button glass-button-primary w-full py-3 text-sm font-bold uppercase tracking-[0.12em]"
+                onClick={handleUnlockAllJets}
+                title="Dev: schaltet alle Katalog-Jets im Hangar frei"
+              >
+                Alle Flugzeuge freischalten
+              </button>
+              <p className="mt-2 text-xs text-white/40">
+                Nur im lokalen Dev-Server. Fortschritt liegt nur in diesem Browser.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -602,6 +607,25 @@ export function Menus({
               <span className="text-right text-sm text-white/70">{c.label}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {settingsTab === 'about' && (
+        <div className="space-y-3 text-sm text-white/65">
+          <p>
+            <span className="font-semibold text-[#e8e6d4]">Fight Jet 3D</span> v1.0.0 — Singleplayer
+            Arcade-Jet-Combat. Kein Konto, kein Multiplayer, kein Server.
+          </p>
+          <p>
+            Fortschritt (Credits, Hangar, Kampagne) bleibt lokal in diesem Browser gespeichert.
+          </p>
+          <p>
+            Spielcode und UI: Mark Waldeis. 3D-Modelle (Jets, Waffen, Glacier-Karte) stammen von
+            Drittanbietern und unterliegen deren Lizenzen. Keine realen Militärdaten.
+          </p>
+          <p className="text-xs text-white/40">
+            Desktop-Browser mit WebGL (Chrome, Edge, Firefox).
+          </p>
         </div>
       )}
     </>

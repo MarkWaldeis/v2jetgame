@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Fight Jet 3D">
+  <rect width="64" height="64" fill="#080a07"/>
+  <path fill="#c9a227" d="M32 8 L38 28 L56 30 L38 34 L32 56 L26 34 L8 30 L26 28 Z"/>
+  <circle cx="32" cy="30" r="2.2" fill="#080a07"/>
+</svg>

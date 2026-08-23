@@ -4,7 +4,7 @@ Browserbasiertes Singleplayer-Jet-Combat (Three.js + React + TypeScript + Vite).
 
 **Live:** [https://markwaldeis.github.io/v2jetgame/](https://markwaldeis.github.io/v2jetgame/)
 
-Version: `1.0.0-rc.1` · Ziel: Singleplayer Jet Combat Campaign (kein Multiplayer / kein War-Thunder-Klon).
+Version: `1.0.0` · Singleplayer Jet Combat Campaign (kein Multiplayer). itch.io-Paket: `npm run package:itch` → siehe Root [ITCH_IO.md](../../ITCH_IO.md).
 
 ## Entwicklung
 
@@ -57,7 +57,7 @@ Einstellungen → Low / Medium / High steuern Pixelratio, Wolkenanzahl, Partikel
 - Start: **1200 Aero Credits**, Startjets F-16 + Su-25
 - Kampagne: volle Belohnung beim Erstabschluss, **25 %** bei Wiederholung
 - Alter Dev-Boost (`9_999_999`) wird einmalig auf Startcredits migriert
-- Debug: `?devCredits=1` in der URL
+- Debug-Credits (`?devCredits=1`) und „Alle Jets freischalten“ nur im Dev-Server
 
 ## Lazy Loading
 

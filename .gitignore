@@ -1,2 +1,8 @@
 .aider*
 Fight Jet Game_Backup/
+release/*.zip
+.DS_Store
+Thumbs.db
+*.log
+.playwright-mcp/
+

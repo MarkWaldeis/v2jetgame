@@ -74,6 +74,11 @@ export default function App() {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingText, setLoadingText] = useState('Initialisiere...');
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [bootError, setBootError] = useState<string | null>(null);
+  const [showDesktopHint, setShowDesktopHint] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 1100;
+  });
   const [credits, setCredits] = useState(() => loadSettings().aeroCredits);
   const mapIdRef = useRef<MapId>(initialHud.selectedMapId);
 
@@ -88,9 +93,20 @@ export default function App() {
 
   useEffect(() => {
     if (!canvasRef.current) return;
-    const game = new Game(canvasRef.current);
+    let game: Game;
+    try {
+      game = new Game(canvasRef.current);
+    } catch (err) {
+      console.error('WebGL/Engine-Start fehlgeschlagen:', err);
+      setBootError(
+        'WebGL ist nicht verfügbar. Bitte Chrome, Edge oder Firefox auf einem Desktop nutzen.'
+      );
+      return;
+    }
     gameRef.current = game;
-    (window as unknown as { __game: Game }).__game = game;
+    if (import.meta.env.DEV) {
+      (window as unknown as { __game: Game }).__game = game;
+    }
     game.onHud((d) => {
       setHud(d);
       mapIdRef.current = d.selectedMapId;
@@ -154,7 +170,16 @@ export default function App() {
     // Menü: Engine stumm, leises Ambient (erst nach User-Geste über UI-SFX)
     game.setSoundGameplayActive(false);
 
-    return () => game.dispose();
+    return () => {
+      if (import.meta.env.DEV) {
+        try {
+          delete (window as unknown as { __game?: Game }).__game;
+        } catch {
+          /* ignore */
+        }
+      }
+      game.dispose();
+    };
   }, [updatePhase]);
 
   const onSoundChange = useCallback((s: { muted: boolean; volume: number }) => {
@@ -263,8 +288,47 @@ export default function App() {
       hud.state === 'gameover' ||
       hud.state === 'victory');
 
+  if (bootError) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#080a07] px-6 text-center">
+        <div className="max-w-md">
+          <div className="mb-2 text-xs uppercase tracking-[0.2em] text-amber-300/70">Fight Jet 3D</div>
+          <h1 className="mb-3 text-2xl font-bold text-[#e8e6d4]">Start nicht möglich</h1>
+          <p className="text-sm text-white/60">{bootError}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="liquid-ui-root relative h-screen w-screen overflow-hidden bg-black">
+    <div
+      className="liquid-ui-root relative h-screen w-screen overflow-hidden bg-black"
+      onPointerDown={() => {
+        try {
+          window.focus();
+        } catch {
+          /* iframe focus */
+        }
+      }}
+    >
+      {showDesktopHint && (
+        <div
+          className="pointer-events-auto fixed bottom-4 left-1/2 z-[70] w-[min(92vw,28rem)] -translate-x-1/2 border border-amber-500/35 bg-black/90 px-4 py-3 text-center text-sm text-amber-100"
+          style={{ borderRadius: 3 }}
+        >
+          <div className="font-semibold tracking-wide">Desktop empfohlen</div>
+          <div className="mt-1 text-xs text-white/55">
+            Fight Jet 3D ist für Maus + Tastatur im Desktop-Browser gebaut.
+          </div>
+          <button
+            type="button"
+            className="mt-2 text-xs uppercase tracking-wider text-amber-300 underline"
+            onClick={() => setShowDesktopHint(false)}
+          >
+            Trotzdem spielen
+          </button>
+        </div>
+      )}
       {isMenu && (
         <div
           className="pointer-events-none fixed inset-0 z-0"
@@ -375,6 +439,7 @@ export default function App() {
       {/* Game canvas: nur im Spiel sichtbar & interaktiv (z-index unter HUD/Menüs) */}
       <canvas
         ref={canvasRef}
+        tabIndex={0}
         className={`absolute inset-0 h-full w-full ${
           hideGameCanvas ? 'pointer-events-none opacity-0' : 'opacity-100'
         }`}

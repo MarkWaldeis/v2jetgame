@@ -8,6 +8,7 @@ export class Engine {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
   private canvas: HTMLCanvasElement;
+  private resizeObserver: ResizeObserver | null = null;
   private contextLost = false;
   /** Max. devicePixelRatio je Qualitätsstufe */
   private pixelRatioCap = 2;
@@ -46,6 +47,8 @@ export class Engine {
     canvas.addEventListener('webglcontextlost', this.onContextLost, false);
     canvas.addEventListener('webglcontextrestored', this.onContextRestored, false);
     window.addEventListener('resize', this.resize);
+    this.resizeObserver = new ResizeObserver(() => this.resize());
+    this.resizeObserver.observe(canvas);
     this.resize();
   }
 
@@ -102,8 +105,9 @@ export class Engine {
   };
 
   private resize = () => {
-    const w = Math.max(1, window.innerWidth);
-    const h = Math.max(1, window.innerHeight);
+    // itch.io spielt im iframe — Canvas-Clientgröße, nicht nur window.
+    const w = Math.max(1, this.canvas.clientWidth || window.innerWidth);
+    const h = Math.max(1, this.canvas.clientHeight || window.innerHeight);
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
@@ -115,6 +119,8 @@ export class Engine {
   }
 
   dispose() {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
     window.removeEventListener('resize', this.resize);
     this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
     this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);

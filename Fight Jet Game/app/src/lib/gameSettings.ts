@@ -36,11 +36,13 @@ const DEV_CREDIT_THRESHOLD = 1_000_000;
 export const REPEAT_REWARD_RATIO = 0.25;
 
 /**
- * Dev-Credits nur lokal, nie im Release-Default:
+ * Dev-Credits nur im lokalen Vite-Dev-Server:
  * - `?devCredits=1` in der URL, oder
- * - localStorage-Flag `fightjet3d.devCredits=1` (nur in DEV-Build gesetzt)
+ * - localStorage-Flag `fightjet3d.devCredits=1`
+ * Im Produktions-Build (itch.io / GitHub Pages) immer aus.
  */
 function isDevCreditBoostEnabled(): boolean {
+  if (!import.meta.env.DEV) return false;
   try {
     if (typeof window !== 'undefined') {
       const q = new URLSearchParams(window.location.search);
@@ -69,7 +71,11 @@ export function loadSettings(): GameSettings {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return { ...DEFAULT_SETTINGS, ownedJets: [...INITIAL_OWNED] };
-    const parsed = JSON.parse(raw) as Partial<GameSettings>;
+    const parsedUnknown: unknown = JSON.parse(raw);
+    if (!parsedUnknown || typeof parsedUnknown !== 'object' || Array.isArray(parsedUnknown)) {
+      return { ...DEFAULT_SETTINGS, ownedJets: [...INITIAL_OWNED] };
+    }
+    const parsed = parsedUnknown as Partial<GameSettings>;
     // Migration: ensure initial owned jets
     if (!parsed.ownedJets || parsed.ownedJets.length === 0) {
       parsed.ownedJets = [...INITIAL_OWNED];
@@ -135,11 +141,14 @@ export function isJetOwned(jetId: string): boolean {
 
 /** Schaltet einen Jet frei und zieht Credits ab */
 export function purchaseJet(jetId: string, price: number): boolean {
+  const id = jetId.trim();
+  if (!id) return false;
+  const cost = Number.isFinite(price) ? Math.max(0, Math.floor(price)) : 0;
   const s = loadSettings();
-  if (s.ownedJets.includes(jetId)) return true; // already owned
-  if (s.aeroCredits < price) return false;
-  s.aeroCredits -= price;
-  s.ownedJets.push(jetId);
+  if (s.ownedJets.includes(id)) return true; // already owned
+  if (s.aeroCredits < cost) return false;
+  s.aeroCredits -= cost;
+  s.ownedJets.push(id);
   saveSettings(s);
   return true;
 }
