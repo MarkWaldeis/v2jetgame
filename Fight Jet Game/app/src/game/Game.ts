@@ -861,8 +861,11 @@ export class Game {
     this.proceduralTerrain.update(this.time);
     this.sea.update(this.time, this.player.position);
     this.effects.update(dt);
-    // Ballistik: Ziele für Segment-Kollision (Gegner, SAMs, Spieler)
-    this.cannons.update(dt, this.collectCannonTargets());
+    // Ballistik: Ziele für Segment-Kollision (Gegner, SAMs, Spieler).
+    // Im Pause-State einfrieren — Geschosse dürfen nicht im Pausemenü treffen.
+    if (this.state !== 'paused') {
+      this.cannons.update(dt, this.collectCannonTargets());
+    }
     if (this.waveBannerTimer > 0) this.waveBannerTimer -= dt;
     if (this.killPopupTimer > 0) {
       this.killPopupTimer -= dt;
