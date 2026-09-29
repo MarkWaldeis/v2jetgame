@@ -47,7 +47,7 @@ const initialHud: HudData = {
       { name: 'HYDRAULICS', ok: true },
     ],
   },
-  waveIndex: 0, waveCount: 4, waveLabel: '', samsLeft: 0, waveBanner: null,
+  waveIndex: 0, waveCount: 3, waveLabel: '', samsLeft: 0, waveBanner: null,
   selectedJetId: 'f16', jetName: 'F-16 Fighting Falcon',
   selectedMapId: 'islands', mapName: 'Stormbreak Archipelago',
   killPopup: null,
@@ -150,7 +150,8 @@ export default function App() {
       if ((d.state === 'gameover' || d.state === 'victory') && phaseRef.current === 'playing') {
         const victory = d.state === 'victory';
         const levelId = gameRef.current?.getCampaignLevelId?.() ?? null;
-        const prevBest = levelId ? getBestScore(levelId) : 0;
+        // Bestmarke: pro Level, für Quick Play der globale Bestscore
+        const prevBest = levelId ? getBestScore(levelId) : loadSettings().bestScore;
 
         let creditsEarned = 0;
         let bonusEarned = 0;
@@ -254,7 +255,7 @@ export default function App() {
     gameRef.current?.applySettings({ graphicsQuality: quality });
   }, []);
 
-  const onStart = useCallback(async (id: JetId) => {
+  const onStart = useCallback(async (id: JetId, campaignLevelId: string | null = null) => {
     if (phaseRef.current === 'loading') return;
     setDebrief(null);
     if (!gameRef.current) {
@@ -269,6 +270,9 @@ export default function App() {
     }
 
     setLoadError(null);
+    // Missionsmodus festlegen: Quick Play (null) oder Kampagnen-Level.
+    // Muss vor preloadAllAssets stehen — dort wird Welle 0 gespawnt.
+    gameRef.current.setCampaignLevel(campaignLevelId);
     updatePhase('loading');
     setLoadingProgress(0);
     setLoadingText('Releasing hangar preview…');
@@ -326,14 +330,13 @@ export default function App() {
     async (levelId: string, jetId: JetId) => {
       if (!gameRef.current) return;
       const level = getCampaignLevel(levelId);
-      gameRef.current.setCampaignLevel(level.id);
       mapIdRef.current = level.mapId as MapId;
       try {
         await gameRef.current.selectMap(level.mapId);
       } catch (e) {
         console.warn('Campaign map failed to load, starting anyway:', e);
       }
-      await onStart(jetId);
+      await onStart(jetId, level.id);
     },
     [onStart]
   );

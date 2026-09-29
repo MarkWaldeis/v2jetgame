@@ -216,16 +216,34 @@ export const CONFIG = {
   },
   mission: {
     /**
-     * Fallback-Wellen (wenn keine Kampagne aktiv).
-     * Primär steuert CampaignCatalog die Missionen.
+     * Quick-Play-Wellen für TO BATTLE (kein Kampagnen-Level aktiv).
+     * Eigener kleiner Skirmish: 3 Wellen, eskalierend — auf jeder Map spielbar.
+     * Kampagnen-Missionen steuert der CampaignCatalog.
      */
     waves: [
       {
-        bandits: 2,
+        label: 'WAVE 1 · SKIRMISH',
+        bandits: 3,
         sams: 0,
-        speedScale: 0.4,
+        aaa: 1,
+        speedScale: 0.55,
         enemyMissiles: false,
-        label: 'WAVE 1 · TRAINING',
+      },
+      {
+        label: 'WAVE 2 · ESCALATION',
+        bandits: 4,
+        sams: 1,
+        aaa: 2,
+        speedScale: 0.65,
+        enemyMissiles: true,
+      },
+      {
+        label: 'WAVE 3 · FULL BRAWL',
+        bandits: 5,
+        sams: 1,
+        aaa: 3,
+        speedScale: 0.75,
+        enemyMissiles: true,
       },
     ],
     waveDelay: 3.2,

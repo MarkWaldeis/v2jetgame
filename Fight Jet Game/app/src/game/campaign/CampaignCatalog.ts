@@ -47,7 +47,9 @@ export interface CampaignLevel {
   /** Optionaler Bonus-Hinweis */
   bonusObjective?: string;
   /** Maschinenlesbares Bonusziel (Debrief-Auswertung) */
-  bonusId?: 'hull50' | 'clearAllAaa' | 'flaresLeft' | 'survived' | 'topTier';
+  bonusId?: 'hull50' | 'clearAllAaa' | 'flaresLeft' | 'survived' | 'topTier' | 'fastClear' | 'hullPct';
+  /** Parameter für fastClear (Sekunden) / hullPct (Prozent) */
+  bonusParam?: number;
   /** Briefing-Text vor dem Einsatz */
   briefing: string;
   /** Debrief bei Sieg */
@@ -119,8 +121,9 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
     rewardCredits: 1400,
     missionType: 'intercept',
     primaryObjective: 'Intercept the bandit swarms before they push the corridor.',
-    bonusObjective: 'Destroy every AAA nest.',
-    bonusId: 'clearAllAaa',
+    bonusObjective: 'Clear all waves in under 7 minutes.',
+    bonusId: 'fastClear',
+    bonusParam: 420,
     briefing:
       'Hostile fighters are pushing the glacier corridor. No SAMs, but the flak is thick. Hold energy, use terrain, and finish the waves quickly.',
     debriefVictory:
@@ -213,8 +216,9 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
     rewardCredits: 2800,
     missionType: 'escort',
     primaryObjective: 'Keep the mountain corridor clear: finish every wave and ground target.',
-    bonusObjective: 'Do not get shot down under SAM pressure.',
-    bonusId: 'survived',
+    bonusObjective: 'Finish with at least 60% airframe integrity.',
+    bonusId: 'hullPct',
+    bonusParam: 60,
     briefing:
       'A logistics convoy is using the glacier pass. You fly cover and SEAD at the same time. Use valleys for cover, save flares for real threats.',
     debriefVictory:

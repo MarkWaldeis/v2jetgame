@@ -19,7 +19,6 @@ import { Effects } from './combat/Effects';
 import { SamSite, AaaTruck, type Damageable } from './combat/GroundTarget';
 import { preloadGroundVehicles, attachGroundVisual } from './combat/GroundVehicleVisuals';
 import {
-  CAMPAIGN_LEVELS,
   getCampaignLevel,
   type CampaignLevel,
   type CampaignWave,
@@ -170,8 +169,8 @@ export class Game {
   private sams: SamSite[] = [];
   private aaaUnits: AaaTruck[] = [];
   private cam = new CameraController();
-  /** Aktives Kampagnen-Level (null = Quick Play Fallback) */
-  private campaignLevel: CampaignLevel | null = CAMPAIGN_LEVELS[0];
+  /** Aktives Kampagnen-Level (null = Quick Play / TO BATTLE Skirmish) */
+  private campaignLevel: CampaignLevel | null = null;
   private cannons: CannonSystem;
   private effects = new Effects();
   private sound = new SoundManager();
@@ -660,21 +659,19 @@ export class Game {
 
   /** Kampagnen-Level wählen (vor Mission-Start) */
   setCampaignLevel(levelId: string | null) {
-    if (!levelId) {
-      this.campaignLevel = CAMPAIGN_LEVELS[0];
-      return;
-    }
-    this.campaignLevel = getCampaignLevel(levelId);
+    // null = Quick-Play-Skirmish (TO BATTLE), sonst Kampagnen-Level
+    this.campaignLevel = levelId ? getCampaignLevel(levelId) : null;
   }
 
   private getActiveWaves(): CampaignWave[] {
     if (this.campaignLevel) return this.campaignLevel.waves;
+    // Quick Play: Skirmish-Set aus der Config
     return CONFIG.mission.waves.map((w) => ({
       label: w.label,
       bandits: w.bandits,
       speedScale: w.speedScale ?? 1,
       enemyMissiles: w.enemyMissiles !== false,
-      aaa: 0,
+      aaa: w.aaa ?? 0,
       sams: w.sams,
     }));
   }
@@ -1573,6 +1570,12 @@ export class Game {
         return this.player.alive;
       case 'topTier':
         return this.player.loadout.price >= 2500;
+      case 'fastClear':
+        // Bonus: Mission unter Zeitlimit beendet (bonusParam = Sekunden)
+        return this.stats.timeSec <= (level.bonusParam ?? 360);
+      case 'hullPct':
+        // Bonus: Rumpf-Integrität am Ende ≥ bonusParam %
+        return hull * 100 >= (level.bonusParam ?? 50);
       default:
         return false;
     }

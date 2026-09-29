@@ -746,7 +746,9 @@ export function Menus({
               {win ? 'Mission complete' : 'Shot down'}
             </h2>
             <p className="glass-subtitle text-sm">
-              {level ? `${level.codename} · ` : ''}
+              {level
+                ? `${level.codename} · `
+                : `${selectedMap?.name ?? selectedMapId} · SKIRMISH · `}
               {selected.name} · <span className="text-amber-300/90">{selected.callsign}</span>
             </p>
           </div>
