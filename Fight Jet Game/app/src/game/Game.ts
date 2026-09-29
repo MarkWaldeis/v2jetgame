@@ -1695,6 +1695,14 @@ export class Game {
       this.sound.setRwrThreat(false, 0);
       if (p.flareCloudTimer > 0.05 && p.alive) warning = 'FLARES OUT';
     }
+    // Soft-Grenze: KI dreht bei ±11 km ab — den Spieler warnen,
+    // bevor er über leere See hinausfliegt und die Mission stallt.
+    if (!warning && p.alive && this.state === 'playing') {
+      const bound = 10500;
+      if (Math.abs(p.position.x) > bound || Math.abs(p.position.z) > bound) {
+        warning = 'LEAVING COMBAT AREA — TURN BACK';
+      }
+    }
     if (!warning && p.alive && !p.isGrounded && !p.gearExtended) {
       const terrainYForGear = this.heightField.getHeight(p.position.x, p.position.z);
       const gearContactY = terrainYForGear + p.loadout.landingGear.groundClearance;
