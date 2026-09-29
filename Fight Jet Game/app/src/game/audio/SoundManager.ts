@@ -42,6 +42,7 @@ class SoundManagerImpl {
   private engineMode: EngineType = 'jet';
   private gameplayActive = false;
   private lastStallBeep = 0;
+  private lastRwrBeep = 0;
   private lastHoverAt = 0;
   private lastUiAt = 0;
   private menuAmbGain: GainNode | null = null;
@@ -419,6 +420,35 @@ class SoundManagerImpl {
       duration: 0.22,
       gain: 0.045,
     });
+  }
+
+  /**
+   * RWR: eingehende Rakete auf den Spieler.
+   * Piep-Tempo steigt, je näher die Rakete kommt (War-Thunder-Feel).
+   */
+  setRwrThreat(active: boolean, closestDistM: number) {
+    if (!this.ctx) return;
+    if (!active || this.muted) return;
+    const t = this.now();
+    // Erst-Alarm sofort hörbar
+    if (this.lastRwrBeep === 0) this.lastRwrBeep = t - 1;
+    const interval = Math.max(0.14, Math.min(0.8, 0.12 + closestDistM / 2600));
+    if (t - this.lastRwrBeep < interval) return;
+    this.lastRwrBeep = t;
+    const urgent = closestDistM < 900;
+    this.tone({
+      t,
+      type: 'sine',
+      freq: urgent ? 1180 : 960,
+      freqEnd: urgent ? 980 : 860,
+      duration: 0.09,
+      gain: urgent ? 0.05 : 0.035,
+    });
+  }
+
+  /** RWR ohne aktiven Kontext (Menü etc.) komplett aus. */
+  clearRwr() {
+    this.lastRwrBeep = 0;
   }
 
   waveStart() {
@@ -947,6 +977,12 @@ export class SoundManager {
   }
   stallWarning(on: boolean) {
     gameAudio.stallWarning(on);
+  }
+  setRwrThreat(active: boolean, closestDistM: number) {
+    gameAudio.setRwrThreat(active, closestDistM);
+  }
+  clearRwr() {
+    gameAudio.clearRwr();
   }
   waveStart() {
     gameAudio.waveStart();

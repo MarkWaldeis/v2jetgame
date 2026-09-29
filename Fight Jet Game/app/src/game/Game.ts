@@ -17,6 +17,7 @@ import {
 import { missileDefForJet, getMissileDef } from './combat/MissileCatalog';
 import { Effects } from './combat/Effects';
 import { SamSite, AaaTruck, type Damageable } from './combat/GroundTarget';
+import { preloadGroundVehicles, attachGroundVisual } from './combat/GroundVehicleVisuals';
 import {
   CAMPAIGN_LEVELS,
   getCampaignLevel,
@@ -132,6 +133,23 @@ export interface HudData {
     points: number;
     kind: 'air' | 'ground';
   } | null;
+  /** Missions-Auswertung (Debrief) */
+  report: {
+    timeSec: number;
+    shotsFired: number;
+    hits: number;
+    accuracy: number; // 0..100
+    airKills: number;
+    groundKills: number;
+    missilesFired: number;
+    flaresUsed: number;
+    hullPct: number;
+    /** Bonusziel erfüllt (Level hat eins definiert) */
+    bonusDone: boolean;
+    bonusText: string | null;
+    /** true, wenn eine eingehende Rakete den Spieler verfolgt (RWR) */
+    threat: boolean;
+  };
 }
 
 export class Game {
@@ -173,6 +191,18 @@ export class Game {
   private killPopupTimer = 0;
   private killPopupSeq = 0;
   private selectedJetId: JetId = 'f16';
+  /** Missions-Statistik für Debrief/Records */
+  private stats = {
+    timeSec: 0,
+    shotsFired: 0,
+    hits: 0,
+    airKills: 0,
+    groundKills: 0,
+    missilesFired: 0,
+    flaresUsed: 0,
+    aaaSpawned: 0,
+    aaaKilled: 0,
+  };
   /** Cache geladener Visuals pro Jet-Id */
   private visualCache = new Map<JetId, THREE.Object3D>();
   /** Laufende Lade-Promises pro Jet-Id (verhindert Doppel-Loads) */
@@ -483,7 +513,7 @@ export class Game {
     }
     onProgress(steps[1].pct, steps[1].text);
 
-    // Step 2: Missile visuals
+    // Step 2: Missile + ground-vehicle visuals
     if (jetDef.stats.missiles > 0) {
       const missileVisualId = missileIdForJet(jetId);
       await preloadMissileVisual(missileVisualId);
@@ -494,6 +524,7 @@ export class Game {
     } else {
       this.player.configureMountedMissiles(() => null, 0);
     }
+    await preloadGroundVehicles();
     onProgress(steps[2].pct, steps[2].text);
 
     // Step 3: Map loading
@@ -529,6 +560,7 @@ export class Game {
     this.clearActors();
     this.waveIndex = 0;
     this.waveDelay = 0;
+    this.resetStats();
     this.spawnWave(0);
     onProgress(steps[5].pct, steps[5].text);
 
@@ -560,6 +592,7 @@ export class Game {
     this.clearLock();
     this.waveIndex = 0;
     this.waveDelay = 0;
+    this.resetStats();
     this.spawnWave(0);
     this.cam.snapBehind(this.player.object);
     this.input.resetAim();
@@ -658,6 +691,19 @@ export class Game {
     this.enemyFireTimers.clear();
   }
 
+  /** Missions-Statistik zurücksetzen (Sortie-Start). */
+  private resetStats() {
+    this.stats.timeSec = 0;
+    this.stats.shotsFired = 0;
+    this.stats.hits = 0;
+    this.stats.airKills = 0;
+    this.stats.groundKills = 0;
+    this.stats.missilesFired = 0;
+    this.stats.flaresUsed = 0;
+    this.stats.aaaSpawned = 0;
+    this.stats.aaaKilled = 0;
+  }
+
   private pickGroundPosition(minDist = 1500, spread = 7000): THREE.Vector3 {
     const pos = new THREE.Vector3(
       this.player.position.x + 2000,
@@ -733,7 +779,9 @@ export class Game {
       const pos = this.pickGroundPosition(1400, 6500);
       const truck = new AaaTruck(this.aaaUnits.length, pos);
       this.aaaUnits.push(truck);
+      if (!forMenu) this.stats.aaaSpawned++;
       this.engine.scene.add(truck.object);
+      attachGroundVisual(truck);
     }
 
     const samSlow = wave.samFireSlow ?? 1;
@@ -742,6 +790,7 @@ export class Game {
       const sam = new SamSite(this.sams.length, pos, samSlow);
       this.sams.push(sam);
       this.engine.scene.add(sam.object);
+      attachGroundVisual(sam);
     }
 
     if (!forMenu) {
@@ -791,9 +840,10 @@ export class Game {
     if (this.input.wasPressed('KeyV') && this.state === 'playing') {
       this.cam.toggleCockpit();
     }
+    // Enter = Schnell-Restart auf den End-Screens (Debrief)
     if (this.input.wasPressed('Enter') &&
-        (this.state === 'menu' || this.state === 'gameover' || this.state === 'victory')) {
-      this.startGame();
+        (this.state === 'gameover' || this.state === 'victory')) {
+      void this.startGame();
     }
 
     // Free-Look vor Input-Update lesen (C halten / RMB)
@@ -840,6 +890,7 @@ export class Game {
 
   private updatePlaying(dt: number) {
     const player = this.player;
+    this.stats.timeSec += dt;
 
     // Wind / Böen (stärker auf Legacy-Zellen im FlightModel)
     this.windField.update(dt);
@@ -908,6 +959,7 @@ export class Game {
       }
       if (this.input.cannon && player.canFireCannon()) {
         player.firedCannon();
+        this.stats.shotsFired++;
         this.cannons.fire(
           player,
           null,
@@ -1016,6 +1068,7 @@ export class Game {
           } else if (isSam) {
             if (killed) {
               this.player.score += CONFIG.score.samKill;
+              this.stats.groundKills++;
               this.effects.explosion(
                 (victim as SamSite).position.clone().add(new THREE.Vector3(0, 4, 0)),
                 true
@@ -1029,6 +1082,8 @@ export class Game {
           } else if (isAaa) {
             if (killed) {
               this.player.score += CONFIG.score.aaaKill;
+              this.stats.aaaKilled++;
+              this.stats.groundKills++;
               this.effects.explosion(
                 (victim as AaaTruck).position.clone().add(new THREE.Vector3(0, 2, 0)),
                 true
@@ -1342,6 +1397,7 @@ export class Game {
     const isAaa = this.aaaUnits.includes(victim as AaaTruck);
     if (shooter.isPlayer) {
       this.player.score += CONFIG.score.hitBonus;
+      this.stats.hits++;
       if (!killed) this.sound.hitConfirm();
     }
     if (killed) {
@@ -1349,12 +1405,15 @@ export class Game {
         this.effects.explosion((victim as SamSite).position.clone().add(new THREE.Vector3(0, 4, 0)), true);
         this.sound.explosion(true);
         this.player.score += CONFIG.score.samKill;
+        this.stats.groundKills++;
         this.showKillPopup((victim as SamSite).name ?? 'SAM SITE', CONFIG.score.samKill, 'ground');
         if (this.player.lockTarget === victim) this.clearLock();
       } else if (isAaa) {
         this.effects.explosion((victim as AaaTruck).position.clone().add(new THREE.Vector3(0, 2, 0)), true);
         this.sound.explosion(true);
         this.player.score += CONFIG.score.aaaKill;
+        this.stats.aaaKilled++;
+        this.stats.groundKills++;
         this.showKillPopup((victim as AaaTruck).name ?? 'AAA', CONFIG.score.aaaKill, 'ground');
         if (this.player.lockTarget === victim) this.clearLock();
       } else {
@@ -1367,6 +1426,7 @@ export class Game {
     this.effects.explosion(e.position, true);
     this.sound.explosion(true);
     this.player.score += CONFIG.score.kill;
+    this.stats.airKills++;
     this.showKillPopup(e.name, CONFIG.score.kill, 'air');
     if (this.player.lockTarget === (e as unknown as Damageable)) this.clearLock();
   }
@@ -1397,6 +1457,7 @@ export class Game {
     const player = this.player;
     if (!player.alive || !player.hasFlares) return;
     if (!player.tryPopFlares()) return;
+    this.stats.flaresUsed++;
 
     const back = player.forward.clone().multiplyScalar(-1);
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(player.object.quaternion);
@@ -1437,6 +1498,7 @@ export class Game {
     if (!target?.alive || player.missilesLeft <= 0) return;
 
     player.missilesLeft--;
+    this.stats.missilesFired++;
     const hardpoints = player.getHardpoints();
     const idx = player.missileStation % Math.max(1, hardpoints.length);
     player.missileStation++;
@@ -1490,6 +1552,47 @@ export class Game {
     this.killPopupTimer = 3.2;
     this.sound.killConfirm(kind);
     this.emitHud();
+  }
+
+  /**
+   * Bonusziel-Auswertung (Debrief). Läuft bei Mission-Ende —
+   * 'survived' ist bei Sieg automatisch wahr.
+   */
+  private bonusAchieved(): boolean {
+    const level = this.campaignLevel;
+    if (!level?.bonusId) return false;
+    const hull = Math.max(0, this.player.hp) / Math.max(1, this.player.maxHp);
+    switch (level.bonusId) {
+      case 'hull50':
+        return hull >= 0.5;
+      case 'clearAllAaa':
+        return this.stats.aaaSpawned > 0 && this.stats.aaaKilled >= this.stats.aaaSpawned;
+      case 'flaresLeft':
+        return this.player.flaresLeft > 0;
+      case 'survived':
+        return this.player.alive;
+      case 'topTier':
+        return this.player.loadout.price >= 2500;
+      default:
+        return false;
+    }
+  }
+
+  /** Mission neu starten (Pause-Menü / Debrief). Behält Jet, Map & Level. */
+  restartMission() {
+    if (
+      this.state === 'playing' ||
+      this.state === 'paused' ||
+      this.state === 'gameover' ||
+      this.state === 'victory'
+    ) {
+      void this.startGame();
+    }
+  }
+
+  /** Aktives Kampagnen-Level (für Briefing/Debrief-UI). */
+  getCampaignLevel(): CampaignLevel | null {
+    return this.campaignLevel;
   }
 
   private onPlayerKilled() {
@@ -1555,9 +1658,21 @@ export class Game {
     let warning: string | null = null;
     if (p.flight.stalled && p.alive) warning = 'STALL';
     else if (p.hp < 30 && p.alive) warning = 'DAMAGE';
-    const missileThreat = this.missiles.some((m) => m.targetIs(p));
-    if (missileThreat) warning = 'MISSILE — X FLARES';
-    else if (p.flareCloudTimer > 0.05 && p.alive) warning = 'FLARES OUT';
+    const missileThreat =
+      this.state === 'playing' && this.missiles.some((m) => m.targetIs(p));
+    if (missileThreat) {
+      // RWR: nächste eingehende Rakete → Piep-Rate
+      let closest = Infinity;
+      for (const m of this.missiles) {
+        if (!m.targetIs(p)) continue;
+        closest = Math.min(closest, m.position.distanceTo(p.position));
+      }
+      this.sound.setRwrThreat(true, closest);
+      warning = 'MISSILE — X FLARES';
+    } else {
+      this.sound.setRwrThreat(false, 0);
+      if (p.flareCloudTimer > 0.05 && p.alive) warning = 'FLARES OUT';
+    }
     if (!warning && p.alive && !p.isGrounded && !p.gearExtended) {
       const terrainYForGear = this.heightField.getHeight(p.position.x, p.position.z);
       const gearContactY = terrainYForGear + p.loadout.landingGear.groundClearance;
@@ -1727,6 +1842,23 @@ export class Game {
       selectedMapId: this.selectedMapId,
       mapName: getMapDef(this.selectedMapId).name,
       killPopup: this.killPopup,
+      report: {
+        timeSec: Math.round(this.stats.timeSec),
+        shotsFired: this.stats.shotsFired,
+        hits: this.stats.hits,
+        accuracy:
+          this.stats.shotsFired > 0
+            ? Math.min(100, Math.round((this.stats.hits / this.stats.shotsFired) * 100))
+            : 0,
+        airKills: this.stats.airKills,
+        groundKills: this.stats.groundKills,
+        missilesFired: this.stats.missilesFired,
+        flaresUsed: this.stats.flaresUsed,
+        hullPct,
+        bonusDone: this.bonusAchieved(),
+        bonusText: this.campaignLevel?.bonusObjective ?? null,
+        threat: missileThreat,
+      },
     };
     for (const cb of this.hudListeners) cb(data);
   }

@@ -24,7 +24,9 @@ export class SamSite implements Damageable {
   readonly groundKind: GroundKind = 'sam';
   alive = true;
   hp = CONFIG.mission.samHp;
-  private radarDish: THREE.Mesh;
+  /** Prozedurale Fallback-Visuals (werden durch GLB ersetzt, sobald geladen) */
+  private visuals = new THREE.Group();
+  private radarDish: THREE.Object3D;
   private fireTimer: number;
   private burnTimer = 0;
   /** Multiplikator auf Fire-Interval (>1 = langsamer) */
@@ -34,6 +36,7 @@ export class SamSite implements Damageable {
     this.name = `SAM ${index + 1}`;
     this.fireSlow = Math.max(0.5, fireSlow);
     this.object.position.copy(pos);
+    this.object.add(this.visuals);
     this.fireTimer = 3 + Math.random() * CONFIG.mission.samFireInterval * this.fireSlow;
 
     const concreteMat = new THREE.MeshStandardMaterial({ color: 0x8b8578, roughness: 0.9 });
@@ -42,28 +45,28 @@ export class SamSite implements Damageable {
 
     const base = new THREE.Mesh(new THREE.CylinderGeometry(6, 7, 2, 8), concreteMat);
     base.position.y = 1;
-    this.object.add(base);
+    this.visuals.add(base);
 
     const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 5, 8), darkMat);
     mast.position.y = 4;
-    this.object.add(mast);
+    this.visuals.add(mast);
     this.radarDish = new THREE.Mesh(
       new THREE.SphereGeometry(2.2, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2.6),
       armyMat
     );
     this.radarDish.position.y = 7;
     this.radarDish.rotation.x = Math.PI / 3;
-    this.object.add(this.radarDish);
+    this.visuals.add(this.radarDish);
 
     for (const side of [-1, 1]) {
       const launcher = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.2, 5), armyMat);
       launcher.position.set(side * 5.5, 1.8, 0);
-      this.object.add(launcher);
+      this.visuals.add(launcher);
       for (let i = 0; i < 4; i++) {
         const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 4.6, 8), darkMat);
         tube.rotation.x = -Math.PI / 4;
         tube.position.set(side * 5.5 - 0.7 + (i % 2) * 1.4, 2.8, -0.5 + Math.floor(i / 2) * 0.9);
-        this.object.add(tube);
+        this.visuals.add(tube);
       }
     }
 
@@ -72,7 +75,20 @@ export class SamSite implements Damageable {
       new THREE.MeshStandardMaterial({ color: 0xc8a23a, roughness: 0.8 })
     );
     stripe.position.y = 1.8;
-    this.object.add(stripe);
+    this.visuals.add(stripe);
+  }
+
+  /**
+   * GLB-Visual (models/ground-vehicles.glb → SAM_Site) gegen die
+   * prozeduralen Platzhalter tauschen. 'SAM_Dish' wird zur Spin-Node.
+   */
+  attachGlb(model: THREE.Object3D): boolean {
+    const dish = model.getObjectByName('SAM_Dish');
+    if (!dish) return false;
+    this.object.remove(this.visuals);
+    this.object.add(model);
+    this.radarDish = dish;
+    return true;
   }
 
   get position(): THREE.Vector3 {
@@ -117,8 +133,12 @@ export class AaaTruck implements Damageable {
   readonly groundKind: GroundKind = 'aaa';
   alive = true;
   hp: number;
-  private turret: THREE.Group;
-  private barrel: THREE.Mesh;
+  /** Prozedurale Fallback-Visuals (werden durch GLB ersetzt) */
+  private visuals = new THREE.Group();
+  /** Yaw-Node (prozedural oder GLB 'AAA_Turret') */
+  private turret: THREE.Object3D;
+  /** Pitch-Node für die Rohre (prozedural oder GLB 'AAA_Guns') */
+  private gunsPivot: THREE.Object3D;
   private fireTimer: number;
   private burstLeft = 0;
   private burnTimer = 0;
@@ -132,8 +152,9 @@ export class AaaTruck implements Damageable {
     this.hp = opts?.hp ?? CONFIG.mission.aaaHp ?? 28;
     this.dmg = opts?.dmg ?? CONFIG.mission.aaaDamage ?? 2.5;
     this.range = opts?.range ?? CONFIG.mission.aaaRange ?? 2200;
-    this.fireInterval = CONFIG.mission.aaaFireInterval ?? 0.12;
+    this.fireInterval = CONFIG.mission.aaaFireInterval ?? 0.11;
     this.object.position.copy(pos);
+    this.object.add(this.visuals);
     this.fireTimer = 1 + Math.random() * 2;
 
     const olive = new THREE.MeshStandardMaterial({ color: 0x3d4a32, roughness: 0.85, metalness: 0.25 });
@@ -144,12 +165,12 @@ export class AaaTruck implements Damageable {
     // Chassis
     const body = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.4, 7.5), olive);
     body.position.y = 1.4;
-    this.object.add(body);
+    this.visuals.add(body);
 
-    // Kabine
+    // Kabine (Front = +Z — Turm-Rohre zeigen nach vorn)
     const cab = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.5, 2.4), olive);
     cab.position.set(0, 2.5, 2.2);
-    this.object.add(cab);
+    this.visuals.add(cab);
 
     // Räder
     for (const z of [-2.2, 0.3, 2.4]) {
@@ -157,37 +178,60 @@ export class AaaTruck implements Damageable {
         const w = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.55, 10), rubber);
         w.rotation.z = Math.PI / 2;
         w.position.set(x, 0.75, z);
-        this.object.add(w);
+        this.visuals.add(w);
       }
     }
 
     // Ladefläche / Plattform
     const deck = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.25, 4), dark);
     deck.position.set(0, 2.15, -1.2);
-    this.object.add(deck);
+    this.visuals.add(deck);
 
-    // Turm
-    this.turret = new THREE.Group();
-    this.turret.position.set(0, 2.4, -1.4);
-    this.object.add(this.turret);
+    // Turm (Yaw)
+    const turret = new THREE.Group();
+    turret.position.set(0, 2.4, -1.4);
+    this.turret = turret;
+    this.object.add(turret);
 
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.4, 0.45, 12), accent);
-    this.turret.add(ring);
+    turret.add(ring);
 
     const housing = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.1, 1.8), olive);
     housing.position.y = 0.7;
-    this.turret.add(housing);
+    turret.add(housing);
 
-    this.barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 4.2, 8), dark);
-    this.barrel.rotation.x = Math.PI / 2;
-    this.barrel.position.set(0, 0.85, -2.4);
-    this.turret.add(this.barrel);
+    // Rohr-Pivot (Pitch) — Rohre zeigen Richtung +Z (vorwärts zum Ziel)
+    const gunsPivot = new THREE.Group();
+    gunsPivot.position.set(0, 0.85, 0);
+    this.gunsPivot = gunsPivot;
+    turret.add(gunsPivot);
+
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 4.2, 8), dark);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0, 0, 1.8);
+    gunsPivot.add(barrel);
 
     // Zwillingsrohr
     const barrel2 = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 3.6, 8), dark);
     barrel2.rotation.x = Math.PI / 2;
-    barrel2.position.set(0.35, 0.7, -2.1);
-    this.turret.add(barrel2);
+    barrel2.position.set(0.35, -0.15, 1.6);
+    gunsPivot.add(barrel2);
+  }
+
+  /**
+   * GLB-Visual (models/ground-vehicles.glb → AAA_Truck) gegen die
+   * prozeduralen Platzhalter tauschen. Nodes: 'AAA_Turret' (Yaw), 'AAA_Guns' (Pitch).
+   */
+  attachGlb(model: THREE.Object3D): boolean {
+    const turret = model.getObjectByName('AAA_Turret');
+    const guns = model.getObjectByName('AAA_Guns');
+    if (!turret || !guns) return false;
+    this.object.remove(this.visuals);
+    this.object.remove(this.turret);
+    this.object.add(model);
+    this.turret = turret;
+    this.gunsPivot = guns;
+    return true;
   }
 
   get position(): THREE.Vector3 {
@@ -225,11 +269,11 @@ export class AaaTruck implements Damageable {
     const dist = toPlayer.length();
     if (dist < 1) return;
 
-    // Turm yaw + barrel elevation
+    // Turm yaw + Rohr-Elevation (Rohre zeigen +Z → auf den Spieler)
     const yaw = Math.atan2(toPlayer.x, toPlayer.z);
     this.turret.rotation.y = yaw;
     const elev = Math.atan2(toPlayer.y - 2, Math.hypot(toPlayer.x, toPlayer.z));
-    this.barrel.rotation.x = Math.PI / 2 - THREE.MathUtils.clamp(elev, -0.15, 1.1);
+    this.gunsPivot.rotation.x = -THREE.MathUtils.clamp(elev, -0.15, 1.1);
 
     if (dist > this.range || dist < 80) {
       this.burstLeft = 0;

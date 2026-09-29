@@ -46,6 +46,8 @@ export interface CampaignLevel {
   primaryObjective: string;
   /** Optionaler Bonus-Hinweis */
   bonusObjective?: string;
+  /** Maschinenlesbares Bonusziel (Debrief-Auswertung) */
+  bonusId?: 'hull50' | 'clearAllAaa' | 'flaresLeft' | 'survived' | 'topTier';
   /** Briefing-Text vor dem Einsatz */
   briefing: string;
   /** Debrief bei Sieg */
@@ -72,6 +74,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
     missionType: 'training',
     primaryObjective: 'Destroy all enemy scouts and AAA sites.',
     bonusObjective: 'Keep airframe damage under 50%.',
+    bonusId: 'hull50',
     briefing:
       'Welcome to Steel Ops. Today you practice mouse-aim, the cannon, and situational awareness. No enemy missiles — use the time to learn the jet and the HUD.',
     debriefVictory:
@@ -117,6 +120,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
     missionType: 'intercept',
     primaryObjective: 'Intercept the bandit swarms before they push the corridor.',
     bonusObjective: 'Destroy every AAA nest.',
+    bonusId: 'clearAllAaa',
     briefing:
       'Hostile fighters are pushing the glacier corridor. No SAMs, but the flak is thick. Hold energy, use terrain, and finish the waves quickly.',
     debriefVictory:
@@ -162,6 +166,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
     missionType: 'sead',
     primaryObjective: 'Neutralize every SAM site and hold the airspace.',
     bonusObjective: 'Survive with at least one flare burst left.',
+    bonusId: 'flaresLeft',
     briefing:
       'Radar net is live. SAM batteries and the first enemy A/A missiles. Flares (X/Z) keep you alive now. Prioritize SAMs when the RWR screams.',
     debriefVictory:
@@ -209,6 +214,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
     missionType: 'escort',
     primaryObjective: 'Keep the mountain corridor clear: finish every wave and ground target.',
     bonusObjective: 'Do not get shot down under SAM pressure.',
+    bonusId: 'survived',
     briefing:
       'A logistics convoy is using the glacier pass. You fly cover and SEAD at the same time. Use valleys for cover, save flares for real threats.',
     debriefVictory:
@@ -254,6 +260,7 @@ export const CAMPAIGN_LEVELS: CampaignLevel[] = [
     missionType: 'strike',
     primaryObjective: 'Break the main defense and finish all three waves.',
     bonusObjective: 'Win in a top-tier jet.',
+    bonusId: 'topTier',
     briefing:
       'The full enemy air and ground defense. This is the test: energy fighting, flares, SEAD, and a dogfight in one. No room for mistakes.',
     debriefVictory:

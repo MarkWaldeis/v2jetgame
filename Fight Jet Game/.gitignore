@@ -3,4 +3,7 @@ dist/
 .wb-req-*.json
 /tmp/
 app/shots/
+app/shots-*/
+*.log
 .aider*
+*.blend1

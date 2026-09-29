@@ -15,6 +15,15 @@ export interface GameSettings {
   completedCampaignLevels: string[];
   /** Höchstes freigeschaltetes Level-Index (1–5) */
   campaignUnlockedMax: number;
+  /** Bester Score je Kampagnen-Level (id → Punkte) */
+  bestScorePerLevel: Record<string, number>;
+  /** Bester Gesamtscore einer Sortie */
+  bestScore: number;
+  /** Gesamt-Zähler für den Service Record */
+  totalSorties: number;
+  totalAirKills: number;
+  totalGroundKills: number;
+  totalVictories: number;
   /**
    * Einmalige Migration: Dev-Credits (9_999_999) erkannt und zurückgesetzt.
    * Verhindert wiederholte Resets.
@@ -64,6 +73,12 @@ export const DEFAULT_SETTINGS: GameSettings = {
   ownedJets: [...INITIAL_OWNED],
   completedCampaignLevels: [],
   campaignUnlockedMax: 1,
+  bestScorePerLevel: {},
+  bestScore: 0,
+  totalSorties: 0,
+  totalAirKills: 0,
+  totalGroundKills: 0,
+  totalVictories: 0,
   economyMigratedV2: true,
 };
 
@@ -103,6 +118,15 @@ export function loadSettings(): GameSettings {
       masterVolume: Math.max(0, Math.min(1, parsed.masterVolume ?? DEFAULT_SETTINGS.masterVolume)),
       ownedJets: [...(parsed.ownedJets ?? INITIAL_OWNED)],
       completedCampaignLevels: [...(parsed.completedCampaignLevels ?? [])],
+      bestScorePerLevel:
+        parsed.bestScorePerLevel && typeof parsed.bestScorePerLevel === 'object'
+          ? { ...parsed.bestScorePerLevel }
+          : {},
+      bestScore: Math.max(0, parsed.bestScore ?? 0),
+      totalSorties: Math.max(0, parsed.totalSorties ?? 0),
+      totalAirKills: Math.max(0, parsed.totalAirKills ?? 0),
+      totalGroundKills: Math.max(0, parsed.totalGroundKills ?? 0),
+      totalVictories: Math.max(0, parsed.totalVictories ?? 0),
       campaignUnlockedMax: Math.max(
         1,
         Math.min(5, parsed.campaignUnlockedMax ?? 1)
@@ -192,7 +216,37 @@ export function completeCampaignLevel(levelId: string, levelIndex: number, rewar
   return s.aeroCredits;
 }
 
-/** Stats 0–100 für Glass-Progress-Balken aus Jet-Def (inkl. WWII-Props ~0.45) */
+/** Bester Score eines Levels (0 = nie geschafft/gespielt) */
+export function getBestScore(levelId: string): number {
+  return loadSettings().bestScorePerLevel[levelId] ?? 0;
+}
+
+export interface SortieResult {
+  levelId: string | null;
+  score: number;
+  airKills: number;
+  groundKills: number;
+  victory: boolean;
+}
+
+/**
+ * Sortie-Auswertung: Gesamtzähler + Bestmarken nach jeder Mission.
+ * @returns aktualisiertes Settings-Objekt
+ */
+export function recordSortie(r: SortieResult): GameSettings {
+  const s = loadSettings();
+  s.totalSorties += 1;
+  s.totalAirKills += Math.max(0, r.airKills);
+  s.totalGroundKills += Math.max(0, r.groundKills);
+  if (r.victory) s.totalVictories += 1;
+  s.bestScore = Math.max(s.bestScore, Math.max(0, r.score));
+  if (r.levelId) {
+    const prev = s.bestScorePerLevel[r.levelId] ?? 0;
+    if (r.score > prev) s.bestScorePerLevel[r.levelId] = r.score;
+  }
+  saveSettings(s);
+  return s;
+}
 export function jetStatBars(stats: {
   speedMult: number;
   turnMult: number;

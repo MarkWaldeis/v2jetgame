@@ -10,6 +10,8 @@ import {
   purchaseJet,
   isJetOwned,
   completeCampaignLevel,
+  recordSortie,
+  getBestScore,
 } from './lib/gameSettings';
 import { disposePreviewRenderers } from './lib/previewGpu';
 import { getCampaignLevel } from './game/campaign/CampaignCatalog';
@@ -49,9 +51,33 @@ const initialHud: HudData = {
   selectedJetId: 'f16', jetName: 'F-16 Fighting Falcon',
   selectedMapId: 'islands', mapName: 'Stormbreak Archipelago',
   killPopup: null,
+  report: {
+    timeSec: 0,
+    shotsFired: 0,
+    hits: 0,
+    accuracy: 0,
+    airKills: 0,
+    groundKills: 0,
+    missilesFired: 0,
+    flaresUsed: 0,
+    hullPct: 100,
+    bonusDone: false,
+    bonusText: null,
+    threat: false,
+  },
 };
 
 type AppPhase = 'menu' | 'loading' | 'playing';
+
+/** Auswertung einer beendeten Sortie für den Debrief-Screen. */
+export interface DebriefInfo {
+  victory: boolean;
+  levelId: string | null;
+  /** Missions-/Bonus-Credits dieser Sortie (ohne Salvage-Anzeige separat) */
+  creditsEarned: number;
+  bonusEarned: number;
+  newBestScore: boolean;
+}
 
 function waitFrames(n: number): Promise<void> {
   return new Promise((resolve) => {
@@ -80,6 +106,7 @@ export default function App() {
     return window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 1100;
   });
   const [credits, setCredits] = useState(() => loadSettings().aeroCredits);
+  const [debrief, setDebrief] = useState<DebriefInfo | null>(null);
   const mapIdRef = useRef<MapId>(initialHud.selectedMapId);
 
   const updatePhase = useCallback((next: AppPhase) => {
@@ -121,15 +148,33 @@ export default function App() {
 
       // Mission beendet
       if ((d.state === 'gameover' || d.state === 'victory') && phaseRef.current === 'playing') {
-        if (d.state === 'victory') {
-          const levelId = gameRef.current?.getCampaignLevelId?.() ?? null;
+        const victory = d.state === 'victory';
+        const levelId = gameRef.current?.getCampaignLevelId?.() ?? null;
+        const prevBest = levelId ? getBestScore(levelId) : 0;
+
+        let creditsEarned = 0;
+        let bonusEarned = 0;
+
+        if (victory) {
           if (levelId) {
             const level = getCampaignLevel(levelId);
+            const before = loadSettings().aeroCredits;
             const total = completeCampaignLevel(level.id, level.index, level.rewardCredits);
-            setCredits(total);
+            creditsEarned = total - before;
+            // Bonusziel: +25% der Level-Belohnung
+            if (d.report.bonusDone) {
+              bonusEarned = Math.round(level.rewardCredits * 0.25);
+              const s = loadSettings();
+              s.aeroCredits += bonusEarned;
+              saveSettings(s);
+              setCredits(s.aeroCredits);
+            } else {
+              setCredits(total);
+            }
           } else {
             const s = loadSettings();
             s.aeroCredits += 1000;
+            creditsEarned = 1000;
             saveSettings(s);
             setCredits(s.aeroCredits);
           }
@@ -137,9 +182,27 @@ export default function App() {
           const reward = Math.floor(d.score * 0.5);
           const s = loadSettings();
           s.aeroCredits += reward;
+          creditsEarned = reward;
           saveSettings(s);
           setCredits(s.aeroCredits);
         }
+
+        // Service Record + Bestmarken
+        recordSortie({
+          levelId,
+          score: d.score,
+          airKills: d.report.airKills,
+          groundKills: d.report.groundKills,
+          victory,
+        });
+
+        setDebrief({
+          victory,
+          levelId,
+          creditsEarned,
+          bonusEarned,
+          newBestScore: d.score > 0 && d.score > prevBest,
+        });
         updatePhase('menu');
         return;
       }
@@ -193,6 +256,7 @@ export default function App() {
 
   const onStart = useCallback(async (id: JetId) => {
     if (phaseRef.current === 'loading') return;
+    setDebrief(null);
     if (!gameRef.current) {
       console.error('Game engine not ready');
       setLoadError('Game engine is not ready.');
@@ -468,6 +532,8 @@ export default function App() {
               : 'menu'
           }
           score={hud.score}
+          report={hud.report}
+          debrief={debrief}
           selectedJetId={hud.selectedJetId}
           selectedMapId={hud.selectedMapId}
           onSelectJet={(id: JetId) => {
@@ -481,7 +547,12 @@ export default function App() {
           }}
           onStart={onStart}
           onResume={() => gameRef.current?.togglePause()}
+          onRestart={() => {
+            setDebrief(null);
+            gameRef.current?.restartMission();
+          }}
           onMenu={() => {
+            setDebrief(null);
             gameRef.current?.returnToMenu();
             updatePhase('menu');
           }}

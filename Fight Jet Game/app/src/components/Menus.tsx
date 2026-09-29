@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import type { GameState } from '../game/Game';
+import type { GameState, HudData } from '../game/Game';
+import type { DebriefInfo } from '../App';
 import {
   JET_CATALOG,
   FACTION_LABELS,
@@ -21,10 +22,12 @@ import { JetSilhouette, NavIcon } from './JetIcons';
 import { JetPreview3D } from './JetPreview3D';
 import { JetThumb } from './JetThumb';
 import { warmJetThumbnails } from '../lib/jetThumbnails';
-import { CAMPAIGN_LEVELS } from '../game/campaign/CampaignCatalog';
+import { CAMPAIGN_LEVELS, getCampaignLevel } from '../game/campaign/CampaignCatalog';
+import type { CampaignLevel } from '../game/campaign/CampaignCatalog';
 import {
   isCampaignLevelUnlocked,
   isCampaignLevelCompleted,
+  getBestScore,
 } from '../lib/gameSettings';
 import { gameAudio } from '../game/audio/SoundManager';
 
@@ -58,6 +61,13 @@ const CONTROLS: { key: string; label: string }[] = [
   { key: 'P / Esc', label: 'Pause' },
 ];
 
+/** Nächstes freigeschaltetes Kampagnen-Level nach `level` (oder null). */
+function getNextLevel(level: CampaignLevel): CampaignLevel | null {
+  const next = CAMPAIGN_LEVELS.find((l) => l.index === level.index + 1);
+  if (!next) return null;
+  return isCampaignLevelUnlocked(next.index) ? next : null;
+}
+
 function StatBar({ label, value }: { label: string; value: number }) {
   const v = Math.max(0, Math.min(100, value));
   return (
@@ -76,12 +86,15 @@ function StatBar({ label, value }: { label: string; value: number }) {
 export function Menus({
   state,
   score,
+  report,
+  debrief,
   selectedJetId,
   selectedMapId,
   onSelectJet,
   onSelectMap,
   onStart,
   onResume,
+  onRestart,
   onMenu,
   onSoundChange,
   onGraphicsChange,
@@ -92,12 +105,18 @@ export function Menus({
 }: {
   state: GameState;
   score: number;
+  /** Missions-Statistik für den Debrief-Screen */
+  report?: HudData['report'] | null;
+  /** Credit-/Rekord-Auswertung der letzten Sortie */
+  debrief?: DebriefInfo | null;
   selectedJetId: JetId;
   selectedMapId: MapId;
   onSelectJet: (id: JetId) => void;
   onSelectMap: (id: MapId) => void | Promise<void>;
   onStart: (jetId: JetId) => void;
   onResume: () => void;
+  /** Schneller Neustart derselben Mission (Pause + Debrief) */
+  onRestart?: () => void;
   onMenu: () => void;
   onSoundChange?: (s: { muted: boolean; volume: number }) => void;
   onGraphicsChange?: (quality: 'low' | 'medium' | 'high') => void;
@@ -116,6 +135,8 @@ export function Menus({
   const [mapError, setMapError] = useState<string | null>(null);
   const [hangarCanScrollLeft, setHangarCanScrollLeft] = useState(false);
   const [hangarCanScrollRight, setHangarCanScrollRight] = useState(false);
+  /** Briefing-Overlay für ein Kampagnen-Level (vor dem Start) */
+  const [briefingLevel, setBriefingLevel] = useState<CampaignLevel | null>(null);
   /** Hangar-Vorschau (darf gesperrt sein) — getrennt vom Combat-Loadout */
   const [hangarFocusId, setHangarFocusId] = useState<JetId>(selectedJetId);
   /** Verhindert Reset auf 'main' wenn z.B. aus GameOver absichtlich Garage geöffnet wird */
@@ -163,6 +184,9 @@ export function Menus({
       } else {
         setScreen('main');
       }
+      setBriefingLevel(null);
+      // Frische Stats (Credits/Records) aus dem Storage ziehen
+      setSettings(loadSettings());
     }
   }, [state]);
 
@@ -659,6 +683,19 @@ export function Menus({
             >
               Resume (P)
             </button>
+            {onRestart && (
+              <button
+                type="button"
+                className="glass-button glass-button-ghost w-full"
+                onClick={() => {
+                  sfx('start');
+                  onRestart();
+                }}
+                onMouseEnter={() => sfx('hover')}
+              >
+                Restart sortie
+              </button>
+            )}
             <button
               type="button"
               className="glass-button glass-button-ghost w-full"
@@ -678,50 +715,171 @@ export function Menus({
     );
   }
 
-  // ─── GAME OVER / VICTORY ────────────────────────────────────────────────
+  // ─── GAME OVER / VICTORY — Debrief ─────────────────────────────────────
   if (state === 'gameover' || state === 'victory') {
     const win = state === 'victory';
+    const level = debrief?.levelId ? getCampaignLevel(debrief.levelId) : null;
+    const nextLevel = win && level ? getNextLevel(level) : null;
+    const rep = report ?? null;
+
+    const fmtTime = (sec: number) => {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}:${String(s).padStart(2, '0')}`;
+    };
+
     return (
       <div className="absolute inset-0 z-20 flex items-center justify-center">
         <div className="menu-vignette absolute inset-0" />
-        <div className="glass-panel pointer-events-auto relative z-10 mx-4 w-full max-w-md p-8 text-center">
-          <div
-            className="glass-eyebrow mb-2"
-            style={{ color: win ? 'var(--accent-success)' : 'var(--accent-danger)' }}
-          >
-            {win ? 'All waves complete' : 'Airframe lost'}
+        <div className="glass-panel pointer-events-auto relative z-10 mx-4 w-full max-w-lg p-6 sm:p-8">
+          <div className="text-center">
+            <div
+              className="glass-eyebrow mb-2"
+              style={{ color: win ? 'var(--accent-success)' : 'var(--accent-danger)' }}
+            >
+              {win ? 'All waves complete' : 'Airframe lost'}
+            </div>
+            <h2
+              className="glass-title mb-1 text-4xl"
+              style={{ color: win ? '#fff' : 'var(--accent-danger)' }}
+            >
+              {win ? 'Mission complete' : 'Shot down'}
+            </h2>
+            <p className="glass-subtitle text-sm">
+              {level ? `${level.codename} · ` : ''}
+              {selected.name} · <span className="text-amber-300/90">{selected.callsign}</span>
+            </p>
           </div>
-          <h2 className="glass-title mb-2 text-4xl" style={{ color: win ? '#fff' : 'var(--accent-danger)' }}>
-            {win ? 'Mission complete' : 'Shot down'}
-          </h2>
-          <p className="glass-subtitle mb-1 text-sm">
-            {win ? `${selected.callsign} owns the sky.` : `${selected.callsign} is down.`}
-          </p>
-          <p className="mb-6 text-2xl font-bold">
-            Score <span className="glass-mono text-amber-300">{score}</span>
-          </p>
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              className="glass-button glass-button-primary w-full py-3.5"
-              onClick={startMission}
+
+          {win && level?.debriefVictory && (
+            <p className="mt-3 border border-[rgba(159,216,74,0.25)] bg-[rgba(159,216,74,0.06)] px-3 py-2 text-center text-xs leading-relaxed text-[#cfd8b0]" style={{ borderRadius: 3 }}>
+              {level.debriefVictory}
+            </p>
+          )}
+
+          {/* Score + Record */}
+          <div className="mt-4 flex items-baseline justify-center gap-3">
+            <span className="text-2xl font-bold">
+              Score <span className="glass-mono text-amber-300">{score.toLocaleString()}</span>
+            </span>
+            {debrief?.newBestScore && (
+              <span className="border border-amber-400/60 bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-200" style={{ borderRadius: 2 }}>
+                New record
+              </span>
+            )}
+          </div>
+
+          {/* Sortie stats */}
+          {rep && (
+            <div className="mt-4 grid grid-cols-3 gap-1.5 text-center">
+              {[
+                ['Time', fmtTime(rep.timeSec)],
+                ['Air kills', rep.airKills],
+                ['Ground kills', rep.groundKills],
+                ['Accuracy', `${rep.accuracy}%`],
+                ['Missiles', rep.missilesFired],
+                ['Hull', `${Math.max(0, rep.hullPct)}%`],
+              ].map(([label, v]) => (
+                <div
+                  key={label as string}
+                  className="border border-[rgba(138,148,110,0.22)] bg-black/30 px-2 py-1.5"
+                  style={{ borderRadius: 3 }}
+                >
+                  <div className="text-[9px] uppercase tracking-[0.14em] text-white/40">{label}</div>
+                  <div className="glass-mono text-sm font-bold text-[#e8e6d4]">{v}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Bonus objective */}
+          {rep?.bonusText && (
+            <div
+              className={`mt-2 flex items-center justify-between border px-3 py-2 text-xs ${
+                rep.bonusDone
+                  ? 'border-[rgba(159,216,74,0.4)] bg-[rgba(159,216,74,0.08)] text-[#c9e09a]'
+                  : 'border-white/10 bg-black/30 text-white/45'
+              }`}
+              style={{ borderRadius: 3 }}
             >
-              {win ? 'New mission' : 'Fly again'} (Enter)
-            </button>
-            <button
-              type="button"
-              className="glass-button glass-button-ghost w-full"
-              onClick={() => {
-                sfx('nav');
-                preserveScreenRef.current = true;
-                setScreen('hangar');
-                setFaction(selected.faction);
-                onMenu();
-              }}
-              onMouseEnter={() => sfx('hover')}
-            >
-              Open hangar
-            </button>
+              <span>Bonus: {rep.bonusText}</span>
+              <span className="font-bold uppercase tracking-wider">
+                {rep.bonusDone ? '✓ Done' : '✗ Failed'}
+              </span>
+            </div>
+          )}
+
+          {/* Credits */}
+          {debrief && (debrief.creditsEarned > 0 || debrief.bonusEarned > 0) && (
+            <div className="mt-2 border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100/90" style={{ borderRadius: 3 }}>
+              <div className="flex justify-between">
+                <span>{win ? 'Mission reward' : 'Salvage'}</span>
+                <span className="glass-mono font-bold">+{debrief.creditsEarned.toLocaleString()} AC</span>
+              </div>
+              {debrief.bonusEarned > 0 && (
+                <div className="mt-0.5 flex justify-between">
+                  <span>Bonus objective</span>
+                  <span className="glass-mono font-bold">+{debrief.bonusEarned.toLocaleString()} AC</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="mt-5 flex flex-col gap-2">
+            {onRestart && (
+              <button
+                type="button"
+                className="glass-button glass-button-primary w-full py-3.5"
+                onClick={() => {
+                  sfx('start');
+                  onRestart();
+                }}
+                onMouseEnter={() => sfx('hover')}
+              >
+                {win ? 'Replay mission' : 'Fly again'} (Enter)
+              </button>
+            )}
+            {nextLevel && onStartCampaign && (
+              <button
+                type="button"
+                className="glass-button w-full border border-[rgba(159,216,74,0.45)] bg-[rgba(159,216,74,0.12)] py-3 font-bold uppercase tracking-[0.12em] text-[#cfe39a] hover:bg-[rgba(159,216,74,0.2)]"
+                onClick={() => {
+                  sfx('start');
+                  onStartCampaign(nextLevel.id, selectedJetId);
+                }}
+                onMouseEnter={() => sfx('hover')}
+              >
+                Next mission → {nextLevel.codename}
+              </button>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="glass-button glass-button-ghost flex-1"
+                onClick={() => {
+                  sfx('nav');
+                  preserveScreenRef.current = true;
+                  setScreen('hangar');
+                  setFaction(selected.faction);
+                  onMenu();
+                }}
+                onMouseEnter={() => sfx('hover')}
+              >
+                Open hangar
+              </button>
+              <button
+                type="button"
+                className="glass-button glass-button-ghost flex-1"
+                onClick={() => {
+                  sfx('nav');
+                  onMenu();
+                  setScreen('main');
+                }}
+                onMouseEnter={() => sfx('hover')}
+              >
+                Command
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1204,14 +1362,39 @@ export function Menus({
                 </button>
               </div>
               <h2 className="glass-title mb-1 text-3xl">Campaign</h2>
-              <p className="glass-subtitle mb-6 text-sm">
+              <p className="glass-subtitle mb-4 text-sm">
                 Pick a mission. Later sorties unlock after you clear the previous one.
               </p>
+
+              {/* Service Record */}
+              <div className="mb-5 grid grid-cols-2 gap-1.5 sm:grid-cols-5">
+                {[
+                  ['Sorties', settings.totalSorties],
+                  ['Victories', settings.totalVictories],
+                  ['Air kills', settings.totalAirKills],
+                  ['Ground kills', settings.totalGroundKills],
+                  ['Best score', settings.bestScore],
+                ].map(([label, v]) => (
+                  <div
+                    key={label as string}
+                    className="border border-[rgba(138,148,110,0.22)] bg-black/30 px-2 py-1.5 text-center"
+                    style={{ borderRadius: 3 }}
+                  >
+                    <div className="text-[9px] uppercase tracking-[0.14em] text-white/40">
+                      {label}
+                    </div>
+                    <div className="glass-mono text-sm font-bold text-[#e8e6d4]">
+                      {Number(v).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
               <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {CAMPAIGN_LEVELS.map((level) => {
                   const unlocked = isCampaignLevelUnlocked(level.index);
                   const done = isCampaignLevelCompleted(level.id);
+                  const best = getBestScore(level.id);
                   const mapName = getMapDef(level.mapId)?.name ?? level.mapId;
                   const stars = '★'.repeat(level.difficulty);
                   const empty = '☆'.repeat(5 - level.difficulty);
@@ -1227,16 +1410,15 @@ export function Menus({
                           sfx('deny');
                           return;
                         }
-                        if (onStartCampaign) {
-                          sfx('start');
-                          onStartCampaign(level.id, selectedJetId);
-                        } else {
-                          startMission();
-                        }
+                        sfx('nav');
+                        setBriefingLevel(level);
                       }}
                       onMouseEnter={() => sfx('hover')}
                       role="button"
                       tabIndex={unlocked ? 0 : -1}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && unlocked) setBriefingLevel(level);
+                      }}
                     >
                       <div className="mission-card-nr">{String(level.index).padStart(2, '0')}</div>
                       <div className="mission-card-name">{level.codename}</div>
@@ -1272,8 +1454,11 @@ export function Menus({
                         <span className="mission-star">{stars}</span>
                         <span className="mission-star-empty">{empty}</span>
                       </div>
-                      <div className="mt-1 text-[10px] text-amber-200/50">
-                        +{level.rewardCredits.toLocaleString()} AC
+                      <div className="mt-1 flex items-center justify-between text-[10px] text-amber-200/50">
+                        <span>+{level.rewardCredits.toLocaleString()} AC</span>
+                        {best > 0 && (
+                          <span className="glass-mono text-white/45">BEST {best.toLocaleString()}</span>
+                        )}
                       </div>
                       {unlocked ? (
                         <span className={`mission-card-badge ready`}>{done ? '✓ Replay' : '🔓 Ready'}</span>
@@ -1315,6 +1500,126 @@ export function Menus({
             </div>
           </div>
         )}
+
+          {/* ═══════════════ MISSION BRIEFING (Overlay) ═══════════════ */}
+          {briefingLevel && (
+            <div
+              className="pointer-events-auto fixed inset-0 z-[90] flex items-center justify-center bg-black/70 px-4"
+              onClick={() => {
+                sfx('click');
+                setBriefingLevel(null);
+              }}
+            >
+              <div
+                className="glass-panel w-full max-w-xl p-6 sm:p-8"
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-label="Mission briefing"
+              >
+                <div className="mb-1 flex items-center justify-between">
+                  <div className="glass-eyebrow">
+                    Mission {String(briefingLevel.index).padStart(2, '0')} ·{' '}
+                    {briefingLevel.missionType.toUpperCase()}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-[0.16em] text-amber-300/80">
+                    {'★'.repeat(briefingLevel.difficulty)}
+                    <span className="text-white/25">
+                      {'★'.repeat(5 - briefingLevel.difficulty)}
+                    </span>
+                  </div>
+                </div>
+                <h2 className="glass-title text-2xl sm:text-3xl">{briefingLevel.codename}</h2>
+                <p className="mb-4 text-sm text-white/55">
+                  {getMapDef(briefingLevel.mapId)?.name ?? briefingLevel.mapId} ·{' '}
+                  {briefingLevel.waves.length} waves
+                </p>
+
+                <div className="mb-4 space-y-2">
+                  <div className="border border-[rgba(201,162,39,0.35)] bg-[rgba(201,162,39,0.07)] px-3 py-2" style={{ borderRadius: 3 }}>
+                    <div className="text-[9px] uppercase tracking-[0.16em] text-amber-300/80">
+                      Primary objective
+                    </div>
+                    <div className="text-sm text-[#e8e6d4]">{briefingLevel.primaryObjective}</div>
+                  </div>
+                  {briefingLevel.bonusObjective && (
+                    <div className="border border-white/10 bg-black/30 px-3 py-2" style={{ borderRadius: 3 }}>
+                      <div className="text-[9px] uppercase tracking-[0.16em] text-white/40">
+                        Bonus objective <span className="text-amber-300/70">+25% credits</span>
+                      </div>
+                      <div className="text-sm text-white/70">{briefingLevel.bonusObjective}</div>
+                    </div>
+                  )}
+                </div>
+
+                <p className="mb-4 border-l-2 border-amber-500/50 pl-3 text-sm italic leading-relaxed text-white/65">
+                  {briefingLevel.briefing}
+                </p>
+
+                {/* Wave intel */}
+                <div className="mb-5 space-y-1">
+                  {briefingLevel.waves.map((w, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between border border-white/5 bg-black/25 px-3 py-1.5 text-[11px] text-white/55"
+                      style={{ borderRadius: 2 }}
+                    >
+                      <span className="glass-mono">{w.label}</span>
+                      <span>
+                        {w.bandits} bandit{w.bandits === 1 ? '' : 's'}
+                        {w.aaa > 0 ? ` · ${w.aaa} AAA` : ''}
+                        {w.sams > 0 ? ` · ${w.sams} SAM` : ''}
+                        {w.enemyMissiles ? ' · MSSL' : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-white/50">
+                  <span>
+                    Reward{' '}
+                    <span className="glass-mono font-bold text-amber-300">
+                      +{briefingLevel.rewardCredits.toLocaleString()} AC
+                    </span>
+                  </span>
+                  <span>
+                    Flying:{' '}
+                    <span className="font-semibold text-[#e8e6d4]">{selected.name}</span>
+                  </span>
+                </div>
+
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    className="glass-button glass-button-ghost flex-1"
+                    onClick={() => {
+                      sfx('click');
+                      setBriefingLevel(null);
+                    }}
+                    onMouseEnter={() => sfx('hover')}
+                  >
+                    Stand down
+                  </button>
+                  <button
+                    type="button"
+                    className="glass-button glass-button-primary flex-1 py-3 font-bold uppercase tracking-[0.12em]"
+                    onClick={() => {
+                      const lvl = briefingLevel;
+                      setBriefingLevel(null);
+                      if (onStartCampaign) {
+                        sfx('start');
+                        onStartCampaign(lvl.id, selectedJetId);
+                      } else {
+                        startMission();
+                      }
+                    }}
+                    onMouseEnter={() => sfx('hover')}
+                  >
+                    Launch mission
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <ExitModal />
         </div>
