@@ -16,11 +16,14 @@ const page = await browser.newPage();
 page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
-await page.goto('https://markwaldeis.github.io/fight-jet-3d/', { waitUntil: 'networkidle0', timeout: 60000 });
-await new Promise(r => setTimeout(r, 5000));
+await page.goto('https://markwaldeis.github.io/v2jetgame/', { waitUntil: 'domcontentloaded', timeout: 90000 });
+await new Promise(r => setTimeout(r, 12000));
 const menu = await page.evaluate(() => document.body.innerText.toLowerCase().includes('fight jet 3d'));
-await page.keyboard.press('Enter');
-await new Promise(r => setTimeout(r, 2500));
+await page.evaluate(() => {
+  const b = [...document.querySelectorAll('button')].find((x) => x.textContent?.includes('TO BATTLE'));
+  b?.click();
+});
+await new Promise(r => setTimeout(r, 12000));
 const hud = await page.evaluate(() => document.body.innerText.includes('KNOTS'));
 await page.screenshot({ path: OUT + '08-live.png' });
 console.log('LIVE Menü:', menu, '| HUD nach Start:', hud, '| Fehler:', errors.length ? errors : 'KEINE');
