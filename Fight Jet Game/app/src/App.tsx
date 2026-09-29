@@ -61,6 +61,7 @@ const initialHud: HudData = {
     missilesFired: 0,
     flaresUsed: 0,
     hullPct: 100,
+    crashed: false,
     bonusDone: false,
     bonusText: null,
     threat: false,

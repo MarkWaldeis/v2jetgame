@@ -143,7 +143,9 @@ export interface HudData {
     missilesFired: number;
     flaresUsed: number;
     hullPct: number;
-    /** Bonusziel erfüllt (Level hat eins definiert) */
+    /** true bei Terrain-/Wasser-Aufschlag (statt Kampfabschuss) */
+    crashed: boolean;
+    /** Bonusziel erfüllt — zählt nur bei erfolgreicher Mission */
     bonusDone: boolean;
     bonusText: string | null;
     /** true, wenn eine eingehende Rakete den Spieler verfolgt (RWR) */
@@ -1042,6 +1044,20 @@ export class Game {
         const killed = player.takeDamage(dmg);
         if (!killed) this.sound.damageHit();
         if (killed) this.onPlayerKilled();
+      }, (muzzle, aim) => {
+        // Sichtbarer Flak: Tracer hoch + Luft-Bursts nahe der Flugbahn
+        this.effects.flakTracer(muzzle, aim);
+        if (Math.random() < 0.55) {
+          const burst = player.position.clone().add(
+            new THREE.Vector3(
+              (Math.random() - 0.5) * 170,
+              (Math.random() - 0.5) * 100,
+              (Math.random() - 0.5) * 170
+            )
+          );
+          this.effects.flakPuff(burst);
+        }
+        this.sound.flakShot(muzzle.distanceTo(player.position));
       });
       if (!aaa.alive && Math.random() < dt * 5) {
         this.effects.damageSmoke(aaa.position.clone().add(new THREE.Vector3(0, 2, 0)));
@@ -1857,8 +1873,9 @@ export class Game {
         groundKills: this.stats.groundKills,
         missilesFired: this.stats.missilesFired,
         flaresUsed: this.stats.flaresUsed,
-        hullPct,
-        bonusDone: this.bonusAchieved(),
+        hullPct: p.alive ? hullPct : 0,
+        crashed: p.crashed,
+        bonusDone: this.state === 'victory' && this.bonusAchieved(),
         bonusText: this.campaignLevel?.bonusObjective ?? null,
         threat: missileThreat,
       },

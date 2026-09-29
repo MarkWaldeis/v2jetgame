@@ -208,7 +208,7 @@ export function Hud({ data }: { data: HudData }) {
               </div>
               <div className="mt-1 text-xs text-white/55">
                 Bandits {data.enemiesAlive}
-                {data.samsLeft > 0 ? ` · SAM ${data.samsLeft}` : ''}
+                {data.samsLeft > 0 ? ` · Ground ${data.samsLeft}` : ''}
               </div>
             </div>
           </div>

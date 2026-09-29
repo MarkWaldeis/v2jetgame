@@ -142,6 +142,8 @@ export class AaaTruck implements Damageable {
   private fireTimer: number;
   private burstLeft = 0;
   private burnTimer = 0;
+  /** Temp-Vektor für Muzzle-Weltposition (kein Allok im Loop) */
+  private _muzzle = new THREE.Vector3();
   /** Schaden pro Treffer (niedrig — Level 1 fair) */
   private dmg: number;
   private range: number;
@@ -252,12 +254,14 @@ export class AaaTruck implements Damageable {
 
   /**
    * Trackt Spieler und feuert Flak-Salven.
-   * onHit: direkter Schaden am Spieler (Arcade-Flak, kein Ballistik-Sim).
+   * onHitPlayer: direkter Schaden am Spieler (Arcade-Flak, kein Ballistik-Sim).
+   * onShot: pro abgefeuertem Geschoss — für Tracer/Burst-Visuals + Sound.
    */
   update(
     dt: number,
     player: Aircraft,
-    onHitPlayer: (dmg: number, from: AaaTruck) => void
+    onHitPlayer: (dmg: number, from: AaaTruck) => void,
+    onShot?: (muzzle: THREE.Vector3, aim: THREE.Vector3) => void
   ) {
     if (!this.alive) {
       this.burnTimer += dt;
@@ -295,6 +299,24 @@ export class AaaTruck implements Damageable {
 
     this.burstLeft -= 1;
     const speed = player.flight?.speed ?? 120;
+
+    // Visual-Callback: Mündung (Welt) → gelegener Zielpunkt beim Spieler
+    if (onShot) {
+      this.gunsPivot.getWorldPosition(this._muzzle);
+      const lead = Math.min(1.1, dist / 700);
+      const aim = player.position
+        .clone()
+        .addScaledVector(player.flight?.velocityDir ?? new THREE.Vector3(), speed * lead)
+        .add(
+          new THREE.Vector3(
+            (Math.random() - 0.5) * 55,
+            (Math.random() - 0.5) * 38,
+            (Math.random() - 0.5) * 55
+          )
+        );
+      onShot(this._muzzle, aim);
+    }
+
     const hitChance =
       0.11 *
       THREE.MathUtils.clamp(1.15 - dist / this.range, 0.15, 1) *

@@ -121,6 +121,9 @@ export class Effects {
   private cFireBright = new THREE.Color(1, 0.9, 0.4);
   private cSmoke = new THREE.Color(0.25, 0.25, 0.27);
   private cSpark = new THREE.Color(1, 0.8, 0.3);
+  /** Flak: heißer Tracer-Kern + dunkler Luft-Burst */
+  private cTracer = new THREE.Color(1, 0.66, 0.2);
+  private cFlak = new THREE.Color(0.16, 0.15, 0.14);
   private flarePellets: FlarePellet[] = [];
   private flareCursor = 0;
   /** 0.35–1.0: skaliert Partikel-Anzahlen (Grafikprofil) */
@@ -256,6 +259,77 @@ export class Effects {
       pos,
       new THREE.Vector3((Math.random() - 0.5) * 3, 1, (Math.random() - 0.5) * 3),
       this.cSmoke, 8 + Math.random() * 6, 0.8 + Math.random() * 0.6, 14
+    );
+  }
+
+  /**
+   * Flak-Tracer: heller Geschoss-Strich vom Geschütz Richtung Ziel.
+   * Reines Visual — der eigentliche Hit-Roll passiert im AaaTruck.
+   */
+  flakTracer(from: THREE.Vector3, to: THREE.Vector3) {
+    const dir = to.clone().sub(from);
+    const dist = dir.length();
+    if (dist < 2) return;
+    dir.multiplyScalar(1 / dist);
+    const speed = 640;
+    const life = Math.min(1.5, dist / speed);
+    const n = this.scaledCount(3);
+    for (let i = 0; i < n; i++) {
+      this.pool.spawn(
+        from,
+        dir
+          .clone()
+          .multiplyScalar(speed)
+          .add(
+            new THREE.Vector3(
+              (Math.random() - 0.5) * 18,
+              (Math.random() - 0.5) * 18,
+              (Math.random() - 0.5) * 18
+            )
+          ),
+        this.cTracer,
+        4.6 + Math.random() * 2.6,
+        life * (0.8 + Math.random() * 0.4),
+        -3.5
+      );
+    }
+    // Kleiner Muzzle-Flash am Geschütz
+    this.pool.spawn(
+      from,
+      dir.clone().multiplyScalar(30),
+      this.cFireBright,
+      7 + Math.random() * 4,
+      0.12,
+      -18
+    );
+  }
+
+  /**
+   * Flak-Luftburst: dunkle Rauchwolke mit heißem Kern — das klassische
+   * „Flak-Puff“-Bild nahe der Flugbahn des Spielers.
+   */
+  flakPuff(pos: THREE.Vector3) {
+    const n = this.scaledCount(6);
+    for (let i = 0; i < n; i++) {
+      this.pool.spawn(
+        pos
+          .clone()
+          .add(new THREE.Vector3().randomDirection().multiplyScalar(Math.random() * 8)),
+        new THREE.Vector3().randomDirection().multiplyScalar(5 + Math.random() * 9),
+        this.cFlak,
+        12 + Math.random() * 14,
+        0.8 + Math.random() * 0.7,
+        34
+      );
+    }
+    // Heißer Kern blitzt kurz auf
+    this.pool.spawn(
+      pos,
+      new THREE.Vector3(0, 0, 0),
+      this.cFireBright,
+      8,
+      0.16,
+      -20
     );
   }
 

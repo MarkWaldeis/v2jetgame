@@ -43,6 +43,7 @@ class SoundManagerImpl {
   private gameplayActive = false;
   private lastStallBeep = 0;
   private lastRwrBeep = 0;
+  private lastFlakSnd = 0;
   private lastHoverAt = 0;
   private lastUiAt = 0;
   private menuAmbGain: GainNode | null = null;
@@ -449,6 +450,36 @@ class SoundManagerImpl {
   /** RWR ohne aktiven Kontext (Menü etc.) komplett aus. */
   clearRwr() {
     this.lastRwrBeep = 0;
+  }
+
+  /**
+   * Ferner Flak-Schuss: dumpfer Knall, Pegel fällt mit Distanz.
+   * Gedrosselt (~3.4/s), damit Salven nicht als Dauerfeuer klingen.
+   */
+  flakShot(distM: number) {
+    if (!this.ctx || this.muted) return;
+    const t = this.now();
+    if (t - this.lastFlakSnd < 0.29) return;
+    this.lastFlakSnd = t;
+    const att = Math.max(0, Math.min(1, 1.15 - distM / 2800));
+    if (att <= 0.02) return;
+    this.noiseBurst({
+      t,
+      duration: 0.14,
+      highpass: 50,
+      lowpassStart: 900,
+      lowpassEnd: 140,
+      gain: 0.075 * att,
+      q: 0.6,
+    });
+    this.tone({
+      t,
+      type: 'sine',
+      freq: 120,
+      freqEnd: 55,
+      duration: 0.11,
+      gain: 0.05 * att,
+    });
   }
 
   waveStart() {
@@ -983,6 +1014,9 @@ export class SoundManager {
   }
   clearRwr() {
     gameAudio.clearRwr();
+  }
+  flakShot(distM: number) {
+    gameAudio.flakShot(distM);
   }
   waveStart() {
     gameAudio.waveStart();

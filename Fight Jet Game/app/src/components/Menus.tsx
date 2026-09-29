@@ -737,13 +737,13 @@ export function Menus({
               className="glass-eyebrow mb-2"
               style={{ color: win ? 'var(--accent-success)' : 'var(--accent-danger)' }}
             >
-              {win ? 'All waves complete' : 'Airframe lost'}
+              {win ? 'All waves complete' : rep?.crashed ? 'Terrain impact' : 'Airframe lost'}
             </div>
             <h2
               className="glass-title mb-1 text-4xl"
               style={{ color: win ? '#fff' : 'var(--accent-danger)' }}
             >
-              {win ? 'Mission complete' : 'Shot down'}
+              {win ? 'Mission complete' : rep?.crashed ? 'Crashed' : 'Shot down'}
             </h2>
             <p className="glass-subtitle text-sm">
               {level
